@@ -11,7 +11,7 @@ require_once INCLUDES_PATH . '/functions.php';
 
 $page = 'home';
 $page_title = SITE_NAME . " - Premium BBS Wheels";
-$page_description = "Every set we offer is hand-selected for perfect fitment, superior craftsmanship, and the soul of true enthusiasts.";
+$page_description = "Shop authentic BBS wheels and forged BBS rims in the USA. Elite BBS Rims in Katy, TX offers hand-selected genuine BBS wheels with expert fitment advice and free USA shipping.";
 
 $featured_products = get_featured_products(8);
 $all_products = get_all_products();
@@ -23,8 +23,91 @@ $all_products = get_all_products();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo htmlspecialchars($page_title); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($page_description); ?>">
-    <link rel="canonical" href="<?php echo SITE_URL; ?>/">
-    
+    <link rel="canonical" href="https://www.elitebbswheelsus.shop/">
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://www.elitebbswheelsus.shop/">
+    <meta property="og:site_name"   content="Elite BBS Rims">
+    <meta property="og:title"       content="Elite BBS Rims — Authentic Forged BBS Wheels USA">
+    <meta property="og:description" content="Shop authentic BBS wheels and forged BBS rims in the USA. Hand-selected genuine BBS wheels with expert fitment advice and free USA shipping.">
+    <meta property="og:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+    <meta property="og:locale"      content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="Elite BBS Rims — Authentic Forged BBS Wheels USA">
+    <meta name="twitter:description" content="Shop authentic BBS wheels and forged BBS rims in the USA. Hand-selected genuine BBS wheels with expert fitment advice and free USA shipping.">
+    <meta name="twitter:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+
+    <!-- JSON-LD: LocalBusiness + WebSite + SearchAction -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "LocalBusiness",
+          "@id": "https://www.elitebbswheelsus.shop/#business",
+          "name": "Elite BBS Rims",
+          "url": "https://www.elitebbswheelsus.shop/",
+          "logo": "https://www.elitebbswheelsus.shop/assets/images/logo.png",
+          "image": "https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png",
+          "description": "Premium authentic BBS wheels and forged rims retailer in Katy, TX. Hand-selected genuine BBS wheels for the USA market.",
+          "telephone": "+16177082284",
+          "email": "Sales@elitebbswheelsus.shop",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "20802 Highland Knolls Drive",
+            "addressLocality": "Katy",
+            "addressRegion": "TX",
+            "postalCode": "77450",
+            "addressCountry": "US"
+          },
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+              "opens": "09:00",
+              "closes": "17:00"
+            }
+          ],
+          "priceRange": "$$$",
+          "currenciesAccepted": "USD",
+          "areaServed": "US"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.elitebbswheelsus.shop/#website",
+          "url": "https://www.elitebbswheelsus.shop/",
+          "name": "Elite BBS Rims",
+          "description": "Authentic BBS wheels and forged rims for the USA market",
+          "publisher": {
+            "@id": "https://www.elitebbswheelsus.shop/#business"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://www.elitebbswheelsus.shop/shop?search={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://www.elitebbswheelsus.shop/"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
     <link rel='dns-prefetch' href='https://fonts.googleapis.com'>
     <link rel='dns-prefetch' href='https://fonts.gstatic.com'>
     <link rel='dns-prefetch' href='https://code.jquery.com'>
@@ -856,7 +939,7 @@ $all_products = get_all_products();
                     <a href="#" target="_blank" class="icon button circle is-outline facebook" title="Follow on Facebook"><i class="icon-facebook"></i></a>
                     <a href="#" target="_blank" class="icon button circle is-outline instagram" title="Follow on Instagram"><i class="icon-instagram"></i></a>
                     <a href="#" target="_blank" class="icon button circle is-outline twitter" title="Follow on Twitter"><i class="icon-twitter"></i></a>
-                    <a href="mailto:Sales@elitebbswheelsus.shop" class="icon button circle is-outline email" title="Send us an email"><i class="icon-envelop"></i></a>
+                    <a href="mailto:info@elitebbswheels.store" class="icon button circle is-outline email" title="Send us an email"><i class="icon-envelop"></i></a>
                     <a href="#" target="_blank" class="icon button circle is-outline pinterest" title="Follow on Pinterest"><i class="icon-pinterest"></i></a>
                 </div>
             </div>
@@ -876,7 +959,7 @@ $all_products = get_all_products();
             <div class="col pb-0 widget widget_text footer-contact">
                 <span class="widget-title">Contact us</span>
                 <div class="is-divider small"></div>
-                <p><a href="mailto:Sales@elitebbswheelsus.shop">Sales@elitebbswheelsus.shop</a></p>
+                <p><a href="mailto:info@elitebbswheels.store">info@elitebbswheels.store</a></p>
                 <p><a href="tel:+16177082284">+1(617)708-2284</a></p>
                 <p>20802 Highland Knolls Drive<br>Katy, TX 77450, USA</p>
                 <p>Business Hours:<br>Monday - Friday, 9:00 AM - 5:00 PM</p>

@@ -22,6 +22,12 @@ $page_description = htmlspecialchars($product['short_description'] ?? '');
 $images = json_decode($product['images'] ?? '[]', true);
 $price_info = get_display_price($product);
 
+$prod_domain   = 'https://www.elitebbswheelsus.shop';
+$prod_url      = $prod_domain . '/product/' . $product['slug'];
+$og_image      = !empty($images[0]) ? $images[0] : $prod_domain . '/wp-content/uploads/2026/02/bbs.png';
+$schema_price  = number_format((float)$price_info['price'], 2, '.', '');
+$schema_avail  = ($product['stock'] > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
+
 // Related products: same category, excluding current
 $related = db_get_all(
     "SELECT * FROM products WHERE status='active' AND category=:cat AND id!=:id ORDER BY RAND() LIMIT 4",
@@ -30,14 +36,73 @@ $related = db_get_all(
 
 ?>
 <!DOCTYPE html>
-<html lang="en-US" prefix="og: https://ogp.me_ns#">
+<html lang="en-US" prefix="og: https://ogp.me/ns#">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo $page_title; ?></title>
     <meta name="description" content="<?php echo $page_description; ?>">
-    <link rel="canonical" href="<?php echo site_url('product/' . $slug); ?>">
-    
+    <link rel="canonical" href="<?php echo $prod_url; ?>">
+
+    <!-- Open Graph -->
+    <meta property="og:type"                    content="product">
+    <meta property="og:url"                     content="<?php echo $prod_url; ?>">
+    <meta property="og:site_name"               content="Elite BBS Rims">
+    <meta property="og:title"                   content="<?php echo htmlspecialchars($product['name']); ?> — Elite BBS Rims">
+    <meta property="og:description"             content="<?php echo htmlspecialchars($product['short_description'] ?? ''); ?>">
+    <meta property="og:image"                   content="<?php echo htmlspecialchars($og_image); ?>">
+    <meta property="og:locale"                  content="en_US">
+    <meta property="product:price:amount"       content="<?php echo $schema_price; ?>">
+    <meta property="product:price:currency"     content="USD">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="<?php echo htmlspecialchars($product['name']); ?> — Elite BBS Rims">
+    <meta name="twitter:description" content="<?php echo htmlspecialchars($product['short_description'] ?? ''); ?>">
+    <meta name="twitter:image"       content="<?php echo htmlspecialchars($og_image); ?>">
+
+    <!-- JSON-LD: Product + Offer + BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Product",
+          "name": <?php echo json_encode($product['name']); ?>,
+          "description": <?php echo json_encode(strip_tags($product['short_description'] ?? $product['description'] ?? '')); ?>,
+          "sku": <?php echo json_encode($product['sku'] ?? ''); ?>,
+          "image": <?php echo json_encode(!empty($images) ? array_values($images) : [$og_image]); ?>,
+          "brand": {
+            "@type": "Brand",
+            "name": <?php echo json_encode($product['brand'] ?? 'BBS'); ?>
+          },
+          "offers": {
+            "@type": "Offer",
+            "url": <?php echo json_encode($prod_url); ?>,
+            "priceCurrency": "USD",
+            "price": "<?php echo $schema_price; ?>",
+            "priceValidUntil": "<?php echo date('Y-12-31', strtotime('+1 year')); ?>",
+            "availability": "<?php echo $schema_avail; ?>",
+            "itemCondition": "https://schema.org/NewCondition",
+            "seller": {
+              "@type": "Organization",
+              "name": "Elite BBS Rims",
+              "url": "https://www.elitebbswheelsus.shop/"
+            }
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.elitebbswheelsus.shop/"},
+            {"@type": "ListItem", "position": 2, "name": "Shop", "item": "https://www.elitebbswheelsus.shop/shop"},
+            {"@type": "ListItem", "position": 3, "name": <?php echo json_encode($product['name']); ?>, "item": <?php echo json_encode($prod_url); ?>}
+          ]
+        }
+      ]
+    }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Dancing+Script&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsomeaad7.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsome-shopaad7.css">
@@ -659,7 +724,7 @@ $related = db_get_all(
             <div class="footer-section">
                 <h3><?php echo SITE_NAME; ?></h3>
                 <p>Premium BBS Wheels for the true enthusiast.</p>
-                <p>Email: info@elitebbswheelsus.shop</p>
+                <p>Email: info@elitebbswheels.store</p>
             </div>
             <div class="footer-section">
                 <h3>Quick Links</h3>

@@ -16,7 +16,36 @@ $page_title = "Refund and Returns Policy - " . SITE_NAME;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo $page_title; ?></title>
-    <meta name="description" content="Elite BBS Rims refund and returns policy.">
+    <meta name="description" content="Elite BBS Rims offers a 30-day return window for unused BBS wheels in original packaging. Learn about our refund process and eligibility requirements.">
+    <link rel="canonical" href="https://www.elitebbswheelsus.shop/refund_returns">
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://www.elitebbswheelsus.shop/refund_returns">
+    <meta property="og:site_name"   content="Elite BBS Rims">
+    <meta property="og:title"       content="Refund &amp; Returns Policy — Elite BBS Rims">
+    <meta property="og:description" content="30-day return policy for unused BBS wheels. Learn about eligibility and the returns process at Elite BBS Rims.">
+    <meta property="og:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+    <meta property="og:locale"      content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary">
+    <meta name="twitter:title"       content="Refund &amp; Returns Policy — Elite BBS Rims">
+    <meta name="twitter:description" content="30-day return policy for unused BBS wheels. Learn eligibility and the returns process.">
+    <meta name="twitter:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+
+    <!-- JSON-LD: BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home",             "item": "https://www.elitebbswheelsus.shop/"},
+        {"@type": "ListItem", "position": 2, "name": "Refund & Returns", "item": "https://www.elitebbswheelsus.shop/refund_returns"}
+      ]
+    }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Dancing+Script&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsomeaad7.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsome-shopaad7.css">
@@ -76,7 +105,7 @@ $page_title = "Refund and Returns Policy - " . SITE_NAME;
             
             <h2>How to Initiate a Return</h2>
             <ol>
-                <li>Contact us at info@elitebbswheelsus.shop to request a Return Authorization</li>
+                <li>Contact us at info@elitebbswheels.store to request a Return Authorization</li>
                 <li>Pack the item securely in original packaging</li>
                 <li>Ship the item to the address provided in the return authorization</li>
                 <li>Provide tracking number for your shipment</li>
@@ -104,7 +133,7 @@ $page_title = "Refund and Returns Policy - " . SITE_NAME;
             <p>A 15% restocking fee may apply to returns that are not due to our error. This covers the cost of inspection and repackaging.</p>
             
             <h2>Contact Us</h2>
-            <p>Questions about returns? Contact us at info@elitebbswheelsus.shop</p>
+            <p>Questions about returns? Contact us at info@elitebbswheels.store</p>
         </div>
     </main>
     <?php require INCLUDES_PATH . '/footer.php'; ?>

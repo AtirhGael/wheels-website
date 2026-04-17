@@ -16,7 +16,36 @@ $page_title = "About Us - " . SITE_NAME;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo $page_title; ?></title>
-    <meta name="description" content="Learn about Elite BBS Rims and our commitment to providing authentic BBS wheels.">
+    <meta name="description" content="Elite BBS Rims is a premium wheel boutique in Katy, TX specializing in authentic BBS forged wheels. Discover our story and commitment to genuine BBS rims.">
+    <link rel="canonical" href="https://www.elitebbswheelsus.shop/about">
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://www.elitebbswheelsus.shop/about">
+    <meta property="og:site_name"   content="Elite BBS Rims">
+    <meta property="og:title"       content="About Elite BBS Rims — Authentic BBS Wheel Specialists, Katy TX">
+    <meta property="og:description" content="Elite BBS Rims is a premium wheel boutique in Katy, TX specializing in authentic BBS forged wheels and rims with decades of German motorsport heritage.">
+    <meta property="og:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+    <meta property="og:locale"      content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="About Elite BBS Rims — Authentic BBS Wheel Specialists">
+    <meta name="twitter:description" content="Premium wheel boutique in Katy, TX. Authentic BBS forged wheels with German motorsport heritage.">
+    <meta name="twitter:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+
+    <!-- JSON-LD: BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home",     "item": "https://www.elitebbswheelsus.shop/"},
+        {"@type": "ListItem", "position": 2, "name": "About Us", "item": "https://www.elitebbswheelsus.shop/about"}
+      ]
+    }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Dancing+Script&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsomeaad7.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsome-shopaad7.css">

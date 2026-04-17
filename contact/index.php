@@ -25,22 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
     } else {
-        // Send email
-        $to = EMAIL_TO;
-        $subject_line = "Contact Form: " . ($subject ?: 'General Inquiry') . " - " . $name;
-        $email_message = "Name: $name\n";
-        $email_message .= "Email: $email\n";
-        $email_message .= "Phone: $phone\n";
-        $email_message .= "Subject: $subject\n\n";
-        $email_message .= "Message:\n$message\n";
-        
-        $headers = "From: " . EMAIL_FROM . "\r\n";
-        $headers .= "Reply-To: $email\r\n";
-        
-        if (mail($to, $subject_line, $email_message, $headers)) {
+        // Send email via SMTP mailer
+        require_once INCLUDES_PATH . '/mailer.php';
+        if (send_contact_notification($name, $email, $phone, $subject, $message)) {
             $success = 'Thank you! Your message has been sent. We will respond within 24 hours.';
         } else {
-            $error = 'An error occurred. Please try again or email us directly.';
+            $error = 'An error occurred sending your message. Please try again or email us directly.';
         }
     }
 }
@@ -52,7 +42,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo $page_title; ?></title>
-    <meta name="description" content="Contact Elite BBS Rims for product inquiries, fitment help, or general questions.">
+    <meta name="description" content="Contact Elite BBS Rims in Katy, TX for authentic BBS wheel inquiries, fitment advice, and order support. Call +1(617)708-2284 or email Sales@elitebbswheelsus.shop.">
+    <link rel="canonical" href="https://www.elitebbswheelsus.shop/contact">
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://www.elitebbswheelsus.shop/contact">
+    <meta property="og:site_name"   content="Elite BBS Rims">
+    <meta property="og:title"       content="Contact Elite BBS Rims — Katy, TX">
+    <meta property="og:description" content="Get in touch with Elite BBS Rims for BBS wheel inquiries, fitment guidance, or order support. Call +1(617)708-2284.">
+    <meta property="og:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+    <meta property="og:locale"      content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary">
+    <meta name="twitter:title"       content="Contact Elite BBS Rims">
+    <meta name="twitter:description" content="Get in touch with Elite BBS Rims for BBS wheel inquiries, fitment guidance, or order support.">
+    <meta name="twitter:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+
+    <!-- JSON-LD: BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home",    "item": "https://www.elitebbswheelsus.shop/"},
+        {"@type": "ListItem", "position": 2, "name": "Contact", "item": "https://www.elitebbswheelsus.shop/contact"}
+      ]
+    }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Dancing+Script&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsomeaad7.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsome-shopaad7.css">
@@ -300,7 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
                     
                     <div class="contact-details">
                         <h3>Contact Information</h3>
-                        <p><strong>Email:</strong> info@elitebbswheelsus.shop</p>
+                        <p><strong>Email:</strong> info@elitebbswheels.store</p>
                         <p><strong>Response Time:</strong> Within 24 hours</p>
                         <p><strong>Business Hours:</strong> Monday - Friday, 9AM - 6PM EST</p>
                     </div>

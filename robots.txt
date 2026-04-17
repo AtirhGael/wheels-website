@@ -1,0 +1,14 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /cart/
+Disallow: /my-account/
+Disallow: /wp-admin/
+Disallow: /elitebbs/admin/
+Disallow: /elitebbs/checkout/
+Disallow: /elitebbs/cart/
+Disallow: /elitebbs/my-account/
+
+Allow: /
+
+Sitemap: https://www.elitebbswheelsus.shop/sitemap.xml

@@ -16,7 +16,36 @@ $page_title = "Terms and Conditions - " . SITE_NAME;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo $page_title; ?></title>
-    <meta name="description" content="Terms and conditions for Elite BBS Rims.">
+    <meta name="description" content="Terms and conditions for purchasing BBS wheels at Elite BBS Rims. Review our policies on orders, payments, shipping, and liability.">
+    <link rel="canonical" href="https://www.elitebbswheelsus.shop/terms-conditions">
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://www.elitebbswheelsus.shop/terms-conditions">
+    <meta property="og:site_name"   content="Elite BBS Rims">
+    <meta property="og:title"       content="Terms &amp; Conditions — Elite BBS Rims">
+    <meta property="og:description" content="Review the terms and conditions for purchasing BBS wheels at Elite BBS Rims, including order policies, shipping terms, and liability.">
+    <meta property="og:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+    <meta property="og:locale"      content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary">
+    <meta name="twitter:title"       content="Terms &amp; Conditions — Elite BBS Rims">
+    <meta name="twitter:description" content="Order policies, shipping terms, and liability for Elite BBS Rims purchases.">
+    <meta name="twitter:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+
+    <!-- JSON-LD: BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home",               "item": "https://www.elitebbswheelsus.shop/"},
+        {"@type": "ListItem", "position": 2, "name": "Terms & Conditions", "item": "https://www.elitebbswheelsus.shop/terms-conditions"}
+      ]
+    }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Dancing+Script&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsomeaad7.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsome-shopaad7.css">
@@ -88,7 +117,7 @@ $page_title = "Terms and Conditions - " . SITE_NAME;
             <p>These terms shall be governed by and construed in accordance with the laws of the United States.</p>
             
             <h2>11. Contact Information</h2>
-            <p>If you have any questions about these Terms and Conditions, please contact us at info@elitebbswheelsus.shop</p>
+            <p>If you have any questions about these Terms and Conditions, please contact us at info@elitebbswheels.store</p>
         </div>
     </main>
     <?php require INCLUDES_PATH . '/footer.php'; ?>

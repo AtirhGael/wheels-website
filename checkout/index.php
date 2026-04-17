@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
     $btc_discount  = ($chosen_method === 'bitcoin') ? round($after_coupon * 0.10, 2) : 0;
     $grand_total   = max(0, $after_coupon - $btc_discount);
 
-    $required = ['customer_name', 'customer_email', 'customer_phone', 'vehicle_make', 'vehicle_model'];
+    $required = ['customer_name', 'customer_email', 'customer_phone'];
     $missing  = [];
     foreach ($required as $f) {
         if (empty(trim($_POST[$f] ?? ''))) $missing[] = str_replace('_', ' ', $f);
@@ -67,9 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
             'customer_phone'  => sanitize($_POST['customer_phone']),
             'billing_address' => sanitize($_POST['billing_address']  ?? ''),
             'shipping_address'=> sanitize($_POST['shipping_address'] ?? ''),
-            'vehicle_make'    => sanitize($_POST['vehicle_make']),
-            'vehicle_model'   => sanitize($_POST['vehicle_model']),
-            'vehicle_year'    => sanitize($_POST['vehicle_year']     ?? ''),
+            'vehicle_make'    => '',
+            'vehicle_model'   => '',
+            'vehicle_year'    => '',
             'notes'           => sanitize($_POST['notes']            ?? ''),
             'items_json'      => json_encode($items),
             'subtotal'        => $subtotal,
@@ -106,68 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
     }
 }
 
-function send_order_email($order_number, $customer, $items, $total, $discount = 0, $coupon = null) {
-    $subtotal = cart_total() ?: $total; // best-effort
-    $to      = EMAIL_TO;
-    $subject = "New Order - " . SITE_NAME . " - " . $order_number;
-
-    $msg  = "===========================================\n";
-    $msg .= "NEW ORDER RECEIVED - " . SITE_NAME . "\n";
-    $msg .= "===========================================\n\n";
-    $msg .= "Order Number : " . $order_number . "\n";
-    $msg .= "Date         : " . date('Y-m-d H:i:s') . "\n\n";
-
-    $msg .= "CUSTOMER DETAILS\n----------------------------------------\n";
-    $msg .= "Name  : " . $customer['customer_name']  . "\n";
-    $msg .= "Email : " . $customer['customer_email'] . "\n";
-    $msg .= "Phone : " . $customer['customer_phone'] . "\n";
-    if (!empty($customer['billing_address']))  $msg .= "Billing  : " . $customer['billing_address']  . "\n";
-    if (!empty($customer['shipping_address'])) $msg .= "Shipping : " . $customer['shipping_address'] . "\n";
-
-    $msg .= "\nVEHICLE INFORMATION\n----------------------------------------\n";
-    $msg .= "Make  : " . $customer['vehicle_make']          . "\n";
-    $msg .= "Model : " . $customer['vehicle_model']         . "\n";
-    $msg .= "Year  : " . ($customer['vehicle_year'] ?: 'N/A') . "\n";
-
-    $msg .= "\nORDER ITEMS\n----------------------------------------\n";
-    foreach ($items as $item) {
-        $msg .= "- " . $item['name'] . "\n";
-        $msg .= "  SKU: " . ($item['sku'] ?: 'N/A') . " | Qty: " . $item['quantity'] . " x $" . number_format($item['price'], 2) . "\n";
-        $msg .= "  Line total: $" . number_format($item['total'], 2) . "\n\n";
-    }
-
-    $msg .= "----------------------------------------\n";
-    $msg .= "Subtotal : $" . number_format($subtotal, 2) . "\n";
-    if ($discount > 0 && $coupon) {
-        $msg .= "Discount (" . $coupon['code'] . "): -$" . number_format($discount, 2) . "\n";
-    }
-    $msg .= "Shipping : To be calculated\n";
-    $msg .= "TOTAL    : $" . number_format($total, 2) . "\n";
-    $msg .= "----------------------------------------\n";
-
-    if (!empty($customer['notes'])) {
-        $msg .= "\nCUSTOMER NOTES\n----------------------------------------\n" . $customer['notes'] . "\n";
-    }
-
-    $msg .= "\n===========================================\n";
-    $msg .= "Please contact customer within 24 hours.\n";
-
-    $headers  = "From: " . EMAIL_FROM . "\r\n";
-    $headers .= "Reply-To: " . $customer['customer_email'] . "\r\n";
-
-    return mail($to, $subject, $msg, $headers);
+function send_order_email($order_number, $customer, $items, $total, $discount = 0, $coupon = null, $btc_discount = 0, $payment_method = '') {
+    require_once INCLUDES_PATH . '/mailer.php';
+    return send_order_notification($order_number, $customer, $items, $total, $discount, $coupon, $btc_discount, $payment_method);
 }
 
-/* ── Vehicle data ── */
-$makes = [
-    'Acura','Alfa Romeo','Aston Martin','Audi','Bentley','BMW','Buick',
-    'Cadillac','Chevrolet','Chrysler','Dodge','Ferrari','Ford','Genesis',
-    'GMC','Honda','Hyundai','Infiniti','Jaguar','Jeep','Kia','Lamborghini',
-    'Land Rover','Lexus','Lincoln','Maserati','Mazda','Mercedes-Benz',
-    'Mitsubishi','Nissan','Pontiac','Porsche','Ram','Rolls-Royce',
-    'Scion','Subaru','Suzuki','Tesla','Toyota','Volkswagen','Volvo','Other',
-];
-$sel_make = htmlspecialchars($_POST['vehicle_make'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en-US">
@@ -523,6 +466,59 @@ $sel_make = htmlspecialchars($_POST['vehicle_make'] ?? '');
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,140,178,0.35); color: #fff; }
 
+        /* ── Payment method cards ── */
+        .pay-methods { display: flex; flex-direction: column; gap: 10px; }
+        .pay-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            border: 2px solid #e5e9ee;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            position: relative;
+            background: #fff;
+        }
+        .pay-card input[type="radio"] { display: none; }
+        .pay-card:hover { border-color: #b3d9e8; background: #f8fbfc; }
+        .pay-card.selected { border-color: #008cb2; background: #f0f9fc; }
+        .pay-card-icon {
+            width: 42px; height: 42px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 900; color: #fff;
+            flex-shrink: 0;
+            background: #008cb2;
+        }
+        .pay-card[data-method="bitcoin"]  .pay-card-icon { background: #f7931a; }
+        .pay-card[data-method="bank"]     .pay-card-icon { background: #1a6b3e; }
+        .pay-card[data-method="paypal"]   .pay-card-icon { background: #003087; }
+        .pay-card-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .pay-card-name { font-family: 'Barlow', sans-serif; font-size: 14px; font-weight: 800; color: #1a1a1a; letter-spacing: 0.3px; }
+        .pay-card-desc { font-size: 12px; color: #888; font-family: 'Lato', sans-serif; }
+        .pay-badge-btc {
+            display: inline-block;
+            background: #e8f8f0; color: #1a6b3e;
+            font-size: 10px; font-weight: 800;
+            padding: 1px 7px; border-radius: 10px;
+            margin-left: 6px; letter-spacing: 0.5px;
+        }
+        .pay-card-check {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            border: 2px solid #dde1e7;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 900; color: transparent;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .pay-card.selected .pay-card-check {
+            border-color: #008cb2;
+            background: #008cb2;
+            color: #fff;
+        }
+
         /* ── Responsive ── */
         @media (max-width: 900px) {
             .co-wrap { grid-template-columns: 1fr; }
@@ -635,41 +631,47 @@ $sel_make = htmlspecialchars($_POST['vehicle_make'] ?? '');
                         </div>
                     </div>
 
+                    <?php if (!empty($enabled_methods)): ?>
                     <div class="co-divider"></div>
 
-                    <!-- Vehicle -->
+                    <!-- Payment Method -->
                     <div class="co-section">
                         <div class="co-section-title">
-                            <span class="icon">&#9881;</span>
-                            Vehicle Fitment
+                            <span class="icon">&#9830;</span>
+                            Payment Method
                         </div>
-                        <p class="field-hint" style="margin-bottom:16px;">Required so we can confirm correct wheel fitment for your car.</p>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Vehicle Make <span class="req">*</span></label>
-                                <select name="vehicle_make" required>
-                                    <option value="">Select Make</option>
-                                    <?php foreach ($makes as $make): ?>
-                                    <option value="<?php echo htmlspecialchars($make); ?>"
-                                        <?php echo $sel_make === $make ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($make); ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Vehicle Model <span class="req">*</span></label>
-                                <input type="text" name="vehicle_model" required
-                                       placeholder="e.g. M3, Civic, F-150"
-                                       value="<?php echo htmlspecialchars($_POST['vehicle_model'] ?? ''); ?>">
-                            </div>
-                        </div>
-                        <div class="form-group" style="max-width:220px;">
-                            <label>Year</label>
-                            <input type="text" name="vehicle_year" placeholder="e.g. 2024"
-                                   value="<?php echo htmlspecialchars($_POST['vehicle_year'] ?? ''); ?>">
+                        <div class="pay-methods">
+                            <?php foreach ($enabled_methods as $method):
+                                $is_checked = ($chosen_method === $method);
+                            ?>
+                            <label class="pay-card <?php echo $is_checked ? 'selected' : ''; ?>" data-method="<?php echo $method; ?>">
+                                <input type="radio" name="payment_method" value="<?php echo $method; ?>"
+                                       <?php echo $is_checked ? 'checked' : ''; ?>>
+                                <span class="pay-card-icon">
+                                    <?php if ($method === 'bitcoin'): ?>&#8383;
+                                    <?php elseif ($method === 'bank'): ?>&#127981;
+                                    <?php else: ?>P<?php endif; ?>
+                                </span>
+                                <span class="pay-card-body">
+                                    <?php if ($method === 'bitcoin'): ?>
+                                        <span class="pay-card-name">Bitcoin</span>
+                                        <span class="pay-card-desc">Pay with BTC <span class="pay-badge-btc">Save 10%</span></span>
+                                    <?php elseif ($method === 'bank'): ?>
+                                        <span class="pay-card-name">Bank Transfer</span>
+                                        <span class="pay-card-desc">Direct bank deposit</span>
+                                    <?php else: ?>
+                                        <span class="pay-card-name">PayPal</span>
+                                        <span class="pay-card-desc">Pay via PayPal</span>
+                                    <?php endif; ?>
+                                </span>
+                                <span class="pay-card-check">&#10003;</span>
+                            </label>
+                            <?php endforeach; ?>
                         </div>
                     </div>
+                    <?php else: ?>
+                        <input type="hidden" name="payment_method" value="email_transfer">
+                    <?php endif; ?>
 
                     <div class="co-divider"></div>
 
@@ -725,13 +727,17 @@ $sel_make = htmlspecialchars($_POST['vehicle_make'] ?? '');
                         <span class="val">&#8722;<?php echo format_price($discount); ?></span>
                     </div>
                     <?php endif; ?>
+                    <div class="co-total-row discount" id="btc-discount-row" style="<?php echo $btc_discount > 0 ? '' : 'display:none;'; ?>">
+                        <span class="lbl">Bitcoin discount (10%)</span>
+                        <span class="val" id="btc-discount-val">&#8722;<?php echo format_price($btc_discount); ?></span>
+                    </div>
                     <div class="co-total-row">
                         <span class="lbl">Shipping</span>
                         <span class="val" style="font-size:12px;color:#aaa;">Calculated after order</span>
                     </div>
                     <div class="co-total-row grand">
                         <span class="lbl">Total</span>
-                        <span class="val"><?php echo format_price($grand_total); ?></span>
+                        <span class="val" id="sidebar-grand-total"><?php echo format_price($grand_total); ?></span>
                     </div>
                 </div>
 
@@ -755,6 +761,40 @@ $sel_make = htmlspecialchars($_POST['vehicle_make'] ?? '');
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     updateCartDisplay();
+
+    /* ── Payment card interactivity ── */
+    var afterCoupon = <?php echo json_encode((float)$after_coupon); ?>;
+
+    function formatPrice(n) {
+        return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function updateTotals(method) {
+        var btcRow   = document.getElementById('btc-discount-row');
+        var btcVal   = document.getElementById('btc-discount-val');
+        var grandEl  = document.getElementById('sidebar-grand-total');
+        if (!grandEl) return;
+
+        var btcDiscount = 0;
+        if (method === 'bitcoin') {
+            btcDiscount = Math.round(afterCoupon * 0.10 * 100) / 100;
+        }
+        var grand = Math.max(0, afterCoupon - btcDiscount);
+
+        if (btcRow) btcRow.style.display = btcDiscount > 0 ? '' : 'none';
+        if (btcVal) btcVal.textContent = '\u2212' + formatPrice(btcDiscount);
+        grandEl.textContent = formatPrice(grand);
+    }
+
+    document.querySelectorAll('.pay-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+            document.querySelectorAll('.pay-card').forEach(function(c) { c.classList.remove('selected'); });
+            card.classList.add('selected');
+            var radio = card.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+            updateTotals(card.dataset.method);
+        });
+    });
 });
 </script>
 </body>

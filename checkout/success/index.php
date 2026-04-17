@@ -1,15 +1,40 @@
 <?php
 /**
- * Checkout Success Page - Elite BBS Rims
+ * Checkout Success / Payment Instructions — Elite BBS Rims
  */
 
-require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../../config.php';
+require_once INCLUDES_PATH . '/db.php';
 require_once INCLUDES_PATH . '/functions.php';
+require_once INCLUDES_PATH . '/cart_functions.php';
 
-$page = 'checkout';
-$page_title = "Order Confirmed - " . SITE_NAME;
-$order_number = isset($_GET['order']) ? sanitize($_GET['order']) : '';
+$page         = 'checkout';
+$page_title   = "Order Confirmed - " . SITE_NAME;
+$order_number = sanitize($_GET['order'] ?? '');
+$method       = sanitize($_GET['method'] ?? 'email_transfer');
 
+/* ── Fetch order from DB so we have the real total ── */
+$order = null;
+if ($order_number) {
+    $order = db_get_row("SELECT * FROM orders WHERE order_number = :n", [':n' => $order_number]);
+    if ($order) $method = $order['payment_method'] ?: $method;
+}
+
+/* ── Fetch live payment credentials from settings ── */
+$btc_wallet    = get_site_setting('payment_bitcoin_wallet', '');
+$bank_name     = get_site_setting('payment_bank_name',     '');
+$bank_account  = get_site_setting('payment_bank_account',  '');
+$bank_routing  = get_site_setting('payment_bank_routing',  '');
+$bank_details  = get_site_setting('payment_bank_details',  '');
+$pp_email      = get_site_setting('payment_paypal_email',  '');
+$pp_link       = get_site_setting('payment_paypal_link',   '');
+
+$method_labels = [
+    'bitcoin'        => 'Bitcoin',
+    'bank'           => 'Bank Transfer',
+    'paypal'         => 'PayPal',
+    'email_transfer' => 'Pending',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en-US">
@@ -17,339 +42,492 @@ $order_number = isset($_GET['order']) ? sanitize($_GET['order']) : '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo $page_title; ?></title>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Dancing+Script&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&family=Lato:wght@400;700&family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsomeaad7.css">
+    <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsome-shopaad7.css">
+    <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome-child/style5152.css">
+    <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome-child/style6aec.css">
     <link rel="stylesheet" href="<?php echo asset_url('css/style.css'); ?>">
     <style>
-        body { margin: 0; }
-        
-        #header {
-            background: rgba(10, 10, 10, 0.9);
-            height: 86px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        
-        .header-wrapper {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 100%;
-            padding: 0 20px;
-        }
-        
-        .logo a {
-            color: #fff;
-            text-decoration: none;
-            font-size: 24px;
-            font-weight: 700;
-            font-family: 'Montserrat', sans-serif;
-        }
-        
-        .logo-tagline {
-            font-family: 'Dancing Script', cursive;
-            font-size: 14px;
-            color: #fff;
-            margin: 0;
-        }
-        
-        .main-nav ul {
-            display: flex;
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            gap: 25px;
-        }
-        
-        .main-nav a {
-            color: #fff;
-            text-decoration: none;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 700;
-            font-size: 13px;
-            text-transform: uppercase;
-        }
-        
-        .main-nav a:hover { color: #4ad8ff; }
-        
-        .header-right a {
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .cart-icon {
-            background: #008cb2;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-weight: 700;
-        }
-        
-        .success-page {
-            max-width: 700px;
-            margin: 60px auto;
-            padding: 0 20px;
+        /* ── Flatsome header overrides ── */
+        .header-main { height: 86px; }
+        #logo { width: auto !important; }
+        #logo img { display: none; }
+        .header-bg-color { background-color: rgba(10,10,10,0.92) !important; }
+        .nav > li > a { font-family: Montserrat, sans-serif; font-weight: 700; color: #fff; }
+        .nav .nav-dropdown { background-color: #000; }
+        .nav-dropdown { font-size: 100%; }
+        @media (max-width: 549px) { .header-main { height: 70px; } }
+        .footer-1 { background-color: #222; }
+        .footer-2 { background-color: #111; }
+        .absolute-footer, html { background-color: #000; }
+
+        body { background: #f4f6f8; }
+
+        /* ── Hero ── */
+        .success-hero {
+            background: linear-gradient(135deg, #0d0f13 0%, #1a1f2e 100%);
+            padding: 50px 24px 44px;
             text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        
-        .success-icon {
-            width: 100px;
-            height: 100px;
-            background: #d4edda;
+        .success-check {
+            width: 68px; height: 68px;
+            background: linear-gradient(135deg, #16a34a, #22c55e);
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 30px;
-            font-size: 50px;
-            color: #28a745;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 18px;
+            font-size: 30px; color: #fff; font-weight: 900;
+            box-shadow: 0 0 30px rgba(34,197,94,0.4);
         }
-        
-        .success-page h1 {
-            font-size: 36px;
-            color: #28a745;
-            margin-bottom: 15px;
-        }
-        
-        .success-page .order-number {
-            font-size: 18px;
-            color: #666;
-            margin-bottom: 30px;
-        }
-        
-        .success-page .order-number strong {
-            color: #333;
-            font-size: 22px;
-        }
-        
-        .success-message {
-            background: #f9f9f9;
-            padding: 30px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            text-align: left;
-        }
-        
-        .success-message p {
-            line-height: 1.8;
-            margin-bottom: 15px;
-        }
-        
-        .success-message strong {
-            color: #008cb2;
-        }
-        
-        .next-steps {
-            margin-bottom: 40px;
-        }
-        
-        .next-steps h2 {
-            font-size: 20px;
-            margin-bottom: 20px;
-            color: #333;
-        }
-        
-        .next-steps ul {
-            list-style: none;
-            padding: 0;
-            text-align: left;
-            display: inline-block;
-        }
-        
-        .next-steps li {
-            padding: 10px 0;
-            padding-left: 30px;
-            position: relative;
-        }
-        
-        .next-steps li::before {
-            content: '✓';
-            position: absolute;
-            left: 0;
-            color: #008cb2;
-            font-weight: 700;
-        }
-        
-        .success-actions {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        
-        .btn-primary {
-            display: inline-block;
-            padding: 15px 40px;
-            background: #008cb2;
+        .success-hero h1 {
+            font-family: 'Barlow', sans-serif;
+            font-size: clamp(26px, 4vw, 42px);
+            font-weight: 900;
             color: #fff;
-            text-decoration: none;
-            border-radius: 99px;
-            font-weight: 700;
             text-transform: uppercase;
-            transition: background 0.3s;
+            letter-spacing: 1px;
+            margin: 0 0 10px;
         }
-        
-        .btn-primary:hover {
-            background: #006f8f;
+        .success-hero .order-ref {
+            font-family: 'Barlow', sans-serif;
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 1px;
         }
-        
-        .btn-outline {
-            display: inline-block;
-            padding: 15px 40px;
-            border: 2px solid #008cb2;
-            color: #008cb2;
-            text-decoration: none;
-            border-radius: 99px;
-            font-weight: 700;
-            text-transform: uppercase;
-            transition: all 0.3s;
+        .success-hero .order-ref strong {
+            color: #00b4e0;
+            font-size: 16px;
+            font-weight: 800;
         }
-        
-        .btn-outline:hover {
-            background: #008cb2;
-            color: #fff;
+
+        /* ── Progress steps ── */
+        .co-steps {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0; margin-top: 28px;
         }
-        
-        footer {
-            background: #222;
-            color: #999;
-            padding: 60px 20px 20px;
-            margin-top: 60px;
+        .co-step {
+            display: flex; align-items: center; gap: 8px;
+            font-family: 'Barlow', sans-serif; font-size: 11px;
+            font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
         }
-        
-        .footer-main {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 40px;
+        .co-step.done   { color: #22c55e; }
+        .co-step.active { color: #fff; }
+        .co-step-num {
+            width: 26px; height: 26px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 900;
+            background: rgba(255,255,255,0.08);
+            border: 1.5px solid rgba(255,255,255,0.15);
         }
-        
-        .footer-section h3 {
-            color: #fff;
-            font-size: 18px;
-            margin-bottom: 20px;
+        .co-step.done   .co-step-num { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .co-step.active .co-step-num { background: #008cb2; border-color: #008cb2; color: #fff; }
+        .co-step-line { width: 48px; height: 1px; background: rgba(255,255,255,0.12); margin: 0 4px; }
+
+        /* ── Page body ── */
+        .success-wrap {
+            max-width: 760px;
+            margin: 40px auto;
+            padding: 0 20px 80px;
         }
-        
-        .footer-section ul {
-            list-style: none;
-            padding: 0;
+
+        /* ── Payment instructions card ── */
+        .pay-instructions {
+            background: #fff;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e8ecf0;
+            margin-bottom: 24px;
         }
-        
-        .footer-section ul li {
+        .pay-instr-header {
+            padding: 18px 24px;
+            display: flex; align-items: center; gap: 14px;
+        }
+        .pay-instr-header.btc   { background: linear-gradient(135deg, #f7931a, #ffb347); }
+        .pay-instr-header.bank  { background: linear-gradient(135deg, #1a6b3e, #22a85c); }
+        .pay-instr-header.pp    { background: linear-gradient(135deg, #003087, #0070ba); }
+        .pay-instr-header.other { background: linear-gradient(135deg, #1a1a1a, #333); }
+        .pay-instr-icon {
+            width: 44px; height: 44px; border-radius: 10px;
+            background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 900; color: #fff; flex-shrink: 0;
+        }
+        .pay-instr-title { font-family: 'Barlow', sans-serif; font-size: 16px; font-weight: 900; color: #fff; letter-spacing: 0.5px; }
+        .pay-instr-subtitle { font-family: 'Barlow', sans-serif; font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+        .pay-instr-body { padding: 24px; }
+
+        /* Amount due banner */
+        .pay-amount-banner {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8f9fb; border: 1px solid #e5e9ee;
+            border-radius: 10px; padding: 14px 20px; margin-bottom: 20px;
+        }
+        .pay-amount-label { font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #888; }
+        .pay-amount-val   { font-family: 'Barlow', sans-serif; font-size: 24px; font-weight: 900; color: #1a1a1a; }
+
+        /* Bitcoin wallet copy box */
+        .wallet-box {
+            background: #0d0f13;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+        .wallet-label {
+            font-family: 'Barlow', sans-serif; font-size: 10px; font-weight: 800;
+            letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4);
             margin-bottom: 10px;
         }
-        
-        .footer-section a {
-            color: #999;
-            text-decoration: none;
+        .wallet-row {
+            display: flex; align-items: center; gap: 10px;
         }
-        
-        .footer-bottom {
-            text-align: center;
-            padding-top: 40px;
-            margin-top: 40px;
-            border-top: 1px solid #333;
+        .wallet-addr {
+            flex: 1; font-family: 'Courier New', monospace; font-size: 13px;
+            color: #f7931a; word-break: break-all; line-height: 1.5;
+            background: rgba(255,255,255,0.04);
+            padding: 10px 12px; border-radius: 6px;
+            border: 1px solid rgba(247,147,26,0.25);
         }
+        .copy-btn {
+            flex-shrink: 0;
+            padding: 10px 18px;
+            background: #f7931a;
+            color: #fff;
+            border: none; border-radius: 8px;
+            font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 800;
+            letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer; transition: all 0.2s; white-space: nowrap;
+        }
+        .copy-btn:hover { background: #e8820a; transform: translateY(-1px); }
+        .copy-btn.copied { background: #16a34a; }
+        .wallet-note {
+            font-size: 12px; color: #888; margin-top: 12px;
+            font-family: 'Lato', sans-serif; line-height: 1.6;
+        }
+
+        /* Bank detail rows */
+        .bank-row {
+            display: flex; align-items: flex-start;
+            padding: 12px 0; border-bottom: 1px solid #f0f2f5;
+        }
+        .bank-row:last-of-type { border-bottom: none; }
+        .bank-row-lbl {
+            width: 140px; flex-shrink: 0;
+            font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 800;
+            letter-spacing: 1px; text-transform: uppercase; color: #aaa;
+            padding-top: 1px;
+        }
+        .bank-row-val {
+            font-family: 'Barlow', sans-serif; font-size: 14px;
+            font-weight: 700; color: #1a1a1a;
+        }
+        .bank-ref {
+            margin-top: 16px; padding: 12px 16px;
+            background: #fffbe6; border: 1px solid #fde68a; border-radius: 8px;
+            font-size: 13px; color: #92400e; line-height: 1.6;
+        }
+
+        /* PayPal */
+        .pp-email-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; background: #f8f9fb;
+            border: 1px solid #e5e9ee; border-radius: 10px; margin-bottom: 16px;
+        }
+        .pp-email-row .lbl { font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #aaa; flex-shrink: 0; }
+        .pp-email-row .val { font-family: 'Lato', sans-serif; font-size: 14px; font-weight: 700; color: #1a1a1a; }
+        .pp-pay-btn {
+            display: block; width: 100%; padding: 15px;
+            background: #0070ba; color: #fff; text-align: center;
+            text-decoration: none; border-radius: 8px;
+            font-family: 'Barlow', sans-serif; font-size: 14px; font-weight: 900;
+            letter-spacing: 1.5px; text-transform: uppercase;
+            transition: all 0.25s; margin-bottom: 12px;
+        }
+        .pp-pay-btn:hover { background: #005ea6; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,112,186,0.35); color: #fff; }
+        .instr-note {
+            font-size: 13px; color: #888; line-height: 1.7;
+            font-family: 'Lato', sans-serif;
+            padding: 12px 16px; background: #f8f9fb;
+            border-radius: 8px; border-left: 3px solid #008cb2;
+        }
+
+        /* ── Confirmation card ── */
+        .confirm-card {
+            background: #fff; border-radius: 14px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e8ecf0; padding: 28px;
+            margin-bottom: 24px;
+        }
+        .confirm-card-title {
+            font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 900;
+            letter-spacing: 2px; text-transform: uppercase; color: #1a1a1a;
+            margin-bottom: 16px; padding-bottom: 12px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .next-steps { list-style: none; padding: 0; margin: 0; }
+        .next-steps li {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid #f5f5f5;
+            font-size: 14px; color: #555; font-family: 'Lato', sans-serif;
+            line-height: 1.5;
+        }
+        .next-steps li:last-child { border-bottom: none; }
+        .step-num {
+            width: 24px; height: 24px; flex-shrink: 0;
+            background: #008cb2; color: #fff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Barlow', sans-serif; font-size: 11px; font-weight: 900;
+            margin-top: 1px;
+        }
+
+        /* ── Action buttons ── */
+        .success-actions {
+            display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+            margin-top: 8px;
+        }
+        .btn-primary {
+            display: inline-block;
+            background: linear-gradient(135deg, #008cb2, #00b4e0); color: #fff;
+            padding: 14px 34px; border-radius: 8px;
+            font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 900;
+            letter-spacing: 2px; text-transform: uppercase; text-decoration: none;
+            transition: all 0.25s;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,140,178,0.35); color: #fff; }
+        .btn-outline {
+            display: inline-block;
+            background: transparent; color: #555;
+            padding: 14px 34px; border-radius: 8px; border: 1.5px solid #ccc;
+            font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 800;
+            letter-spacing: 2px; text-transform: uppercase; text-decoration: none;
+            transition: all 0.25s;
+        }
+        .btn-outline:hover { border-color: #008cb2; color: #008cb2; }
+
+        .contact-note {
+            text-align: center; margin-top: 24px;
+            font-size: 13px; color: #999; font-family: 'Lato', sans-serif;
+        }
+        .contact-note a { color: #008cb2; text-decoration: none; }
     </style>
 </head>
-<body>
-    <!-- Header -->
-    <header id="header">
-        <div class="header-wrapper">
-            <div class="logo">
-                <a href="<?php echo SITE_URL; ?>/">ELITE BBS RIMS</a>
-                <p class="logo-tagline">ELITE BBS RIMS</p>
-            </div>
-            
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="<?php echo SITE_URL; ?>/">Home</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/shop">Shop</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/about">About Us</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/contact">Contact Us</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/testemonials">Reviews</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/faq">FAQ</a></li>
-                </ul>
-            </nav>
-            
-            <div class="header-right">
-                <a href="<?php echo SITE_URL; ?>/cart">
-                    <span>Cart</span>
-                    <span class="cart-icon">0</span>
-                </a>
-            </div>
+<body class="wp-theme-flatsome nav-dropdown-has-arrow nav-dropdown-has-shadow nav-dropdown-has-border">
+<div id="wrapper">
+
+    <?php require INCLUDES_PATH . '/header.php'; ?>
+
+    <!-- Hero -->
+    <div class="success-hero">
+        <div class="success-check">&#10003;</div>
+        <h1>Order Confirmed!</h1>
+        <p class="order-ref">Order reference: <strong><?php echo htmlspecialchars($order_number); ?></strong></p>
+
+        <div class="co-steps">
+            <div class="co-step done"><span class="co-step-num">&#10003;</span><span>Cart</span></div>
+            <div class="co-step-line"></div>
+            <div class="co-step done"><span class="co-step-num">&#10003;</span><span>Details</span></div>
+            <div class="co-step-line"></div>
+            <div class="co-step active"><span class="co-step-num">3</span><span>Confirm</span></div>
         </div>
-    </header>
+    </div>
 
     <main>
-        <div class="success-page">
-            <div class="success-icon">✓</div>
-            
-            <h1>Thank You!</h1>
-            
-            <p class="order-number">Your order has been successfully placed.</p>
-            
-            <div class="success-message">
-                <p><strong>Order Number:</strong> <?php echo $order_number; ?></p>
-                <p>We have received your order and will process it shortly. <strong>You will receive a confirmation email at your registered email address.</strong></p>
-                <p>Our team will contact you within <strong>24 hours</strong> to confirm your order details, provide shipping costs, and discuss payment options.</p>
+        <div class="success-wrap">
+
+            <?php
+            /* ════════════════════════════════════════
+               PAYMENT INSTRUCTIONS
+            ════════════════════════════════════════ */
+
+            if ($method === 'bitcoin'): ?>
+
+            <div class="pay-instructions">
+                <div class="pay-instr-header btc">
+                    <div class="pay-instr-icon">&#8383;</div>
+                    <div>
+                        <div class="pay-instr-title">Pay with Bitcoin</div>
+                        <div class="pay-instr-subtitle">Send the exact amount to the wallet address below</div>
+                    </div>
+                </div>
+                <div class="pay-instr-body">
+                    <?php if ($order): ?>
+                    <div class="pay-amount-banner">
+                        <span class="pay-amount-label">Amount Due (USD)</span>
+                        <span class="pay-amount-val"><?php echo format_price($order['total']); ?></span>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($btc_wallet): ?>
+                    <div class="wallet-box">
+                        <div class="wallet-label">Bitcoin Wallet Address</div>
+                        <div class="wallet-row">
+                            <span class="wallet-addr" id="btc-wallet-addr"><?php echo htmlspecialchars($btc_wallet); ?></span>
+                            <button class="copy-btn" id="copy-btn" onclick="copyWallet()">Copy</button>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <p style="color:#888;font-size:14px;">Bitcoin wallet address will be sent to your email.</p>
+                    <?php endif; ?>
+
+                    <div class="instr-note">
+                        Please include your order number <strong><?php echo htmlspecialchars($order_number); ?></strong> in the transaction memo/note. Bitcoin payments typically confirm within 10–60 minutes.
+                    </div>
+                </div>
             </div>
-            
-            <div class="next-steps">
-                <h2>What happens next?</h2>
-                <ul>
-                    <li>We will review your order and verify product availability</li>
-                    <li>We'll contact you to confirm shipping costs</li>
-                    <li>Payment options will be discussed (bank transfer, etc.)</li>
-                    <li>Once payment is received, we'll ship your wheels</li>
-                    <li>You'll receive tracking information via email</li>
+
+            <?php elseif ($method === 'bank'): ?>
+
+            <div class="pay-instructions">
+                <div class="pay-instr-header bank">
+                    <div class="pay-instr-icon">&#127981;</div>
+                    <div>
+                        <div class="pay-instr-title">Bank Transfer Details</div>
+                        <div class="pay-instr-subtitle">Transfer the order total to the account below</div>
+                    </div>
+                </div>
+                <div class="pay-instr-body">
+                    <?php if ($order): ?>
+                    <div class="pay-amount-banner">
+                        <span class="pay-amount-label">Amount Due</span>
+                        <span class="pay-amount-val"><?php echo format_price($order['total']); ?></span>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($bank_name):    ?><div class="bank-row"><span class="bank-row-lbl">Bank Name</span>      <span class="bank-row-val"><?php echo htmlspecialchars($bank_name);    ?></span></div><?php endif; ?>
+                    <?php if ($bank_account): ?><div class="bank-row"><span class="bank-row-lbl">Account No.</span>    <span class="bank-row-val"><?php echo htmlspecialchars($bank_account); ?></span></div><?php endif; ?>
+                    <?php if ($bank_routing): ?><div class="bank-row"><span class="bank-row-lbl">Routing No.</span>    <span class="bank-row-val"><?php echo htmlspecialchars($bank_routing); ?></span></div><?php endif; ?>
+                    <?php if ($bank_details): ?><div class="bank-row"><span class="bank-row-lbl">Additional</span>     <span class="bank-row-val"><?php echo htmlspecialchars($bank_details); ?></span></div><?php endif; ?>
+
+                    <div class="bank-ref">
+                        &#9888; Please use <strong><?php echo htmlspecialchars($order_number); ?></strong> as the payment reference / memo so we can match your transfer.
+                    </div>
+                </div>
+            </div>
+
+            <?php elseif ($method === 'paypal'): ?>
+
+            <div class="pay-instructions">
+                <div class="pay-instr-header pp">
+                    <div class="pay-instr-icon">P</div>
+                    <div>
+                        <div class="pay-instr-title">Pay with PayPal</div>
+                        <div class="pay-instr-subtitle">Send payment to the PayPal address below</div>
+                    </div>
+                </div>
+                <div class="pay-instr-body">
+                    <?php if ($order): ?>
+                    <div class="pay-amount-banner">
+                        <span class="pay-amount-label">Amount Due</span>
+                        <span class="pay-amount-val"><?php echo format_price($order['total']); ?></span>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($pp_email): ?>
+                    <div class="pp-email-row">
+                        <span class="lbl">PayPal Email</span>
+                        <span class="val"><?php echo htmlspecialchars($pp_email); ?></span>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($pp_link): ?>
+                    <a href="<?php echo htmlspecialchars($pp_link); ?>" target="_blank" rel="noopener" class="pp-pay-btn">Pay Now via PayPal &rarr;</a>
+                    <?php endif; ?>
+
+                    <div class="instr-note">
+                        Please include your order number <strong><?php echo htmlspecialchars($order_number); ?></strong> in the PayPal payment note so we can identify your order.
+                    </div>
+                </div>
+            </div>
+
+            <?php else: /* email_transfer fallback */ ?>
+
+            <div class="pay-instructions">
+                <div class="pay-instr-header other">
+                    <div class="pay-instr-icon">&#9993;</div>
+                    <div>
+                        <div class="pay-instr-title">Payment Details Coming Soon</div>
+                        <div class="pay-instr-subtitle">We will contact you within 24 hours</div>
+                    </div>
+                </div>
+                <div class="pay-instr-body">
+                    <div class="instr-note">
+                        Our team will reach out to you at your registered email address with payment options, shipping costs, and next steps within 24 hours.
+                    </div>
+                </div>
+            </div>
+
+            <?php endif; ?>
+
+            <!-- What happens next -->
+            <div class="confirm-card">
+                <div class="confirm-card-title">What happens next?</div>
+                <ul class="next-steps">
+                    <li><span class="step-num">1</span> We review your order and confirm product availability</li>
+                    <li><span class="step-num">2</span> Once payment is received we prepare your wheels for shipment</li>
+                    <li><span class="step-num">3</span> We confirm shipping costs and dispatch your order</li>
+                    <li><span class="step-num">4</span> You receive tracking information via email</li>
                 </ul>
             </div>
-            
+
             <div class="success-actions">
                 <a href="<?php echo SITE_URL; ?>/" class="btn-primary">Back to Home</a>
                 <a href="<?php echo SITE_URL; ?>/shop" class="btn-outline">Continue Shopping</a>
             </div>
-            
-            <p style="margin-top: 40px; color: #666; font-size: 14px;">
-                Questions? Contact us at <a href="mailto:<?php echo EMAIL_TO; ?>" style="color: #008cb2;"><?php echo EMAIL_TO; ?></a>
+
+            <p class="contact-note">
+                Questions? Email us at <a href="mailto:<?php echo EMAIL_TO; ?>"><?php echo EMAIL_TO; ?></a>
             </p>
-        </div>
+
+        </div><!-- .success-wrap -->
     </main>
 
-    <!-- Footer -->
-    <footer>
-        <div class="footer-main">
-            <div class="footer-section">
-                <h3><?php echo SITE_NAME; ?></h3>
-                <p>Premium BBS Wheels for the true enthusiast.</p>
-            </div>
-            <div class="footer-section">
-                <h3>Quick Links</h3>
-                <ul>
-                    <li><a href="<?php echo SITE_URL; ?>/">Home</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/shop">Shop</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/about">About Us</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/contact">Contact Us</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h3>Customer Service</h3>
-                <ul>
-                    <li><a href="<?php echo SITE_URL; ?>/faq">FAQ</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/refund_returns">Refund Policy</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/terms-conditions">Terms</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/testemonials">Reviews</a></li>
-                </ul>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; <?php echo date('Y'); ?> <?php echo SITE_NAME; ?>. All rights reserved.</p>
-        </div>
-    </footer>
+    <?php require INCLUDES_PATH . '/footer.php'; ?>
+
+</div><!-- #wrapper -->
+
+<script src="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/../../../themes/flatsome/assets/js/flatsomed02f.js"></script>
+<script>var siteUrl = '<?php echo SITE_URL; ?>';</script>
+<script src="<?php echo asset_url('js/main.js'); ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    updateCartDisplay();
+});
+
+function copyWallet() {
+    var addr = document.getElementById('btc-wallet-addr');
+    var btn  = document.getElementById('copy-btn');
+    if (!addr || !btn) return;
+
+    var text = addr.textContent.trim();
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(function() {
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(function() {
+                btn.textContent = 'Copy';
+                btn.classList.remove('copied');
+            }, 2500);
+        });
+    } else {
+        /* fallback for non-HTTPS */
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity  = '0';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(function() {
+            btn.textContent = 'Copy';
+            btn.classList.remove('copied');
+        }, 2500);
+    }
+}
+</script>
 </body>
 </html>

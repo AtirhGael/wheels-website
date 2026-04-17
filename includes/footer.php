@@ -34,7 +34,7 @@
             <div class="col pb-0 widget widget_text footer-contact">
                 <span class="widget-title">Contact us</span>
                 <div class="is-divider small"></div>
-                <p><a href="mailto:Sales@elitebbswheelsus.shop">Sales@elitebbswheelsus.shop</a></p>
+                <p><a href="mailto:info@elitebbswheels.store">info@elitebbswheels.store</a></p>
                 <p><a href="tel:+16177082284">+1(617)708-2284</a></p>
                 <p>20802 Highland Knolls Drive<br>Katy, TX 77450, USA</p>
             </div>
@@ -68,7 +68,7 @@
             <div class="col pb-0 widget footer-contact">
                 <span class="widget-title">Contact us</span>
                 <div class="is-divider small"></div>
-                <p><a href="mailto:Sales@elitebbswheelsus.shop">Sales@elitebbswheelsus.shop</a></p>
+                <p><a href="mailto:info@elitebbswheels.store">info@elitebbswheels.store</a></p>
                 <p><a href="tel:+16177082284">+1(617)708-2284</a></p>
                 <p>Monday - Friday, 9:00 AM - 5:00 PM</p>
             </div>

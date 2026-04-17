@@ -9,7 +9,7 @@ require_once INCLUDES_PATH . '/functions.php';
 
 $page = 'shop';
 $page_title = "Shop - " . SITE_NAME;
-$page_description = "Browse our selection of premium BBS wheels.";
+$page_description = "Shop authentic BBS wheels and forged BBS rims at Elite BBS Rims. Browse our full catalog of genuine BBS wheels — forged, flow-formed, and classic designs. Expert fitment advice included.";
 
 $search    = isset($_GET['search'])    ? trim($_GET['search'])    : '';
 $category  = isset($_GET['category'])  ? trim($_GET['category'])  : '';
@@ -80,7 +80,34 @@ $categories = get_all_categories();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo htmlspecialchars($page_title); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($page_description); ?>">
-    <link rel="canonical" href="<?php echo SITE_URL; ?>/shop/">
+    <link rel="canonical" href="https://www.elitebbswheelsus.shop/shop">
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://www.elitebbswheelsus.shop/shop">
+    <meta property="og:site_name"   content="Elite BBS Rims">
+    <meta property="og:title"       content="Shop BBS Wheels — Elite BBS Rims">
+    <meta property="og:description" content="Browse our full catalog of authentic BBS wheels and forged rims. Expert fitment. Free USA shipping.">
+    <meta property="og:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+    <meta property="og:locale"      content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="Shop BBS Wheels — Elite BBS Rims">
+    <meta name="twitter:description" content="Browse our full catalog of authentic BBS wheels and forged rims. Expert fitment. Free USA shipping.">
+    <meta name="twitter:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+
+    <!-- JSON-LD: BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.elitebbswheelsus.shop/"},
+        {"@type": "ListItem", "position": 2, "name": "Shop", "item": "https://www.elitebbswheelsus.shop/shop"}
+      ]
+    }
+    </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Dancing+Script&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
@@ -522,7 +549,7 @@ $categories = get_all_categories();
             <div class="col pb-0 widget widget_text footer-contact">
                 <span class="widget-title">Contact us</span>
                 <div class="is-divider small"></div>
-                <p><a href="mailto:Sales@elitebbswheelsus.shop">Sales@elitebbswheelsus.shop</a></p>
+                <p><a href="mailto:info@elitebbswheels.store">info@elitebbswheels.store</a></p>
                 <p><a href="tel:+16177082284">+1(617)708-2284</a></p>
                 <p>20802 Highland Knolls Drive<br>Katy, TX 77450, USA</p>
             </div>
@@ -557,7 +584,7 @@ $categories = get_all_categories();
             <div class="col pb-0 widget footer-contact">
                 <span class="widget-title">Contact us</span>
                 <div class="is-divider small"></div>
-                <p><a href="mailto:Sales@elitebbswheelsus.shop">Sales@elitebbswheelsus.shop</a></p>
+                <p><a href="mailto:info@elitebbswheels.store">info@elitebbswheels.store</a></p>
                 <p><a href="tel:+16177082284">+1(617)708-2284</a></p>
                 <p>Monday - Friday, 9:00 AM - 5:00 PM</p>
             </div>

@@ -31,6 +31,8 @@
     RewriteRule ^blog/?$ blog/index.php [L]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^blog/([^/]+)/?$ blog/posts.php?slug=$1 [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^sitemap\.xml$ sitemap.php [L]
 </IfModule>
 
 # Security Headers
@@ -62,3 +64,31 @@ DirectoryIndex index.php index.html
 # Error documents (optional)
 # ErrorDocument 404 /404.php
 # ErrorDocument 500 /500.php
+
+# Gzip Compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+    AddOutputFilterByType DEFLATE application/json application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# Browser Caching
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg              "access plus 1 year"
+    ExpiresByType image/png               "access plus 1 year"
+    ExpiresByType image/webp              "access plus 1 year"
+    ExpiresByType image/gif               "access plus 1 year"
+    ExpiresByType image/svg+xml           "access plus 1 year"
+    ExpiresByType text/css                "access plus 3 months"
+    ExpiresByType application/javascript  "access plus 3 months"
+    ExpiresByType application/x-javascript "access plus 3 months"
+    ExpiresByType text/html               "access plus 1 hour"
+</IfModule>
+
+# Canonical domain enforcement (uncomment when live on elitebbswheelsus.shop)
+# <IfModule mod_rewrite.c>
+#     RewriteCond %{HTTP_HOST} ^elitebbswheelsus\.shop$ [NC]
+#     RewriteRule ^(.*)$ https://www.elitebbswheelsus.shop/$1 [R=301,L]
+# </IfModule>

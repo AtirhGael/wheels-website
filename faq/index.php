@@ -16,7 +16,90 @@ $page_title = "FAQ - " . SITE_NAME;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php echo $page_title; ?></title>
-    <meta name="description" content="Frequently asked questions about BBS wheels, fitment, shipping, and returns.">
+    <meta name="description" content="Find answers about BBS wheel authenticity, fitment, shipping, payment, and returns. Expert BBS wheel support from Elite BBS Rims in Katy, TX.">
+    <link rel="canonical" href="https://www.elitebbswheelsus.shop/faq">
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://www.elitebbswheelsus.shop/faq">
+    <meta property="og:site_name"   content="Elite BBS Rims">
+    <meta property="og:title"       content="FAQ — BBS Wheel Questions Answered | Elite BBS Rims">
+    <meta property="og:description" content="Answers to your questions about BBS wheel authenticity, vehicle fitment, shipping, returns, and warranty from Elite BBS Rims in Katy, TX.">
+    <meta property="og:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+    <meta property="og:locale"      content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary">
+    <meta name="twitter:title"       content="FAQ — BBS Wheel Questions Answered">
+    <meta name="twitter:description" content="Questions about BBS authenticity, fitment, shipping, and returns answered by Elite BBS Rims.">
+    <meta name="twitter:image"       content="https://www.elitebbswheelsus.shop/wp-content/uploads/2026/02/bbs.png">
+
+    <!-- JSON-LD: FAQPage + BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Are your BBS wheels authentic?",
+              "acceptedAnswer": {"@type": "Answer", "text": "Yes. We only sell 100% genuine BBS wheels sourced directly from authorized dealers. Each wheel comes with manufacturer authentication."}
+            },
+            {
+              "@type": "Question",
+              "name": "How do I know if a BBS wheel will fit my car?",
+              "acceptedAnswer": {"@type": "Answer", "text": "We offer expert fitment advice. Provide your vehicle's make, model, and year when ordering or contact us before purchase. We determine the correct size, offset, and bolt pattern for your specific vehicle."}
+            },
+            {
+              "@type": "Question",
+              "name": "What payment methods do you accept?",
+              "acceptedAnswer": {"@type": "Answer", "text": "We accept major credit cards, Bitcoin, bank transfer, PayPal, and email transfer. Payment plans can be arranged for high-value purchases."}
+            },
+            {
+              "@type": "Question",
+              "name": "Do you offer international shipping?",
+              "acceptedAnswer": {"@type": "Answer", "text": "Yes, we ship worldwide. Contact us for a shipping quote to your country."}
+            },
+            {
+              "@type": "Question",
+              "name": "What is your return policy for BBS wheels?",
+              "acceptedAnswer": {"@type": "Answer", "text": "We offer a 30-day return window for unused items in original packaging. See our full Refund and Returns Policy page for complete details."}
+            },
+            {
+              "@type": "Question",
+              "name": "How long does shipping take?",
+              "acceptedAnswer": {"@type": "Answer", "text": "In-stock wheels typically ship within 3–5 business days. Custom orders may take 2–4 weeks. You will receive tracking information once your order ships."}
+            },
+            {
+              "@type": "Question",
+              "name": "What warranty do BBS wheels come with?",
+              "acceptedAnswer": {"@type": "Answer", "text": "All BBS wheels come with the manufacturer's warranty. We also provide a 30-day inspection period upon delivery for peace of mind."}
+            },
+            {
+              "@type": "Question",
+              "name": "Can I cancel or modify my order?",
+              "acceptedAnswer": {"@type": "Answer", "text": "Orders can be cancelled or modified within 24 hours of placement, provided they have not yet shipped."}
+            },
+            {
+              "@type": "Question",
+              "name": "How do I track my BBS wheel order?",
+              "acceptedAnswer": {"@type": "Answer", "text": "Once your order ships, you will receive a tracking number via email. You can also contact us directly for order status updates."}
+            }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.elitebbswheelsus.shop/"},
+            {"@type": "ListItem", "position": 2, "name": "FAQ",  "item": "https://www.elitebbswheelsus.shop/faq"}
+          ]
+        }
+      ]
+    }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Dancing+Script&family=Lato:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsomeaad7.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/wp-content/themes/flatsome/assets/css/flatsome-shopaad7.css">

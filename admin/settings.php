@@ -40,32 +40,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $settings = get_site_settings();
 }
 
-require_once INCLUDES_PATH . '/header.php';
+$admin_page = 'settings';
+$page_title = 'Settings';
+require_once INCLUDES_PATH . '/admin_header.php';
 ?>
-<div class="admin-container">
-    <aside class="admin-sidebar">
-        <h2>Admin Panel</h2>
-        <nav>
-            <a href="<?= site_url('admin/') ?>">Dashboard</a>
-            <a href="<?= site_url('admin/products.php') ?>">Products</a>
-            <a href="<?= site_url('admin/orders.php') ?>">Orders</a>
-            <a href="<?= site_url('admin/settings.php') ?>" class="active">Settings</a>
-            <a href="<?= site_url('admin/logout.php') ?>">Logout</a>
-        </nav>
-    </aside>
-    
-    <main class="admin-main">
-        <header class="admin-header">
-            <h1>Site Settings</h1>
-            <p>Manage your site contact information</p>
-        </header>
-        
-        <?php if ($success): ?>
-            <div class="alert alert-success"><?= $success ?></div>
-        <?php endif; ?>
-        <?php if ($error): ?>
-            <div class="alert alert-error"><?= $error ?></div>
-        <?php endif; ?>
+
+<div class="adm-page-header">
+    <div>
+        <div class="adm-page-title">Settings</div>
+        <div class="adm-page-sub">Manage site info and payment methods</div>
+    </div>
+</div>
+
+<?php if ($success): ?>
+    <div class="adm-alert success"><?php echo htmlspecialchars($success); ?></div>
+<?php endif; ?>
+<?php if ($error): ?>
+    <div class="adm-alert error"><?php echo htmlspecialchars($error); ?></div>
+<?php endif; ?>
         
         <form method="POST" class="settings-form">
             <div class="form-row">
@@ -95,11 +87,11 @@ require_once INCLUDES_PATH . '/header.php';
                 <textarea id="contact_address" name="contact_address" rows="3"><?= sanitize($settings['contact_address'] ?? '') ?></textarea>
             </div>
             
-            <button type="submit" class="btn btn-primary">Save Settings</button>
+            <button type="submit" class="adm-btn primary">Save Settings</button>
         </form>
 
         <!-- ── Payment Methods ── -->
-        <div class="settings-section-title">Payment Methods</div>
+        <div style="font-family:'Barlow',sans-serif;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin:32px 0 16px;">Payment Methods</div>
 
         <form method="POST" class="settings-form">
             <!-- Bitcoin -->
@@ -211,75 +203,17 @@ require_once INCLUDES_PATH . '/header.php';
             <input type="hidden" name="contact_address" value="<?= htmlspecialchars($settings['contact_address'] ?? '') ?>">
             <input type="hidden" name="business_hours"  value="<?= htmlspecialchars($settings['business_hours']  ?? '') ?>">
 
-            <button type="submit" class="btn btn-primary" style="margin-top:10px;">Save Payment Settings</button>
+            <button type="submit" class="adm-btn primary" style="margin-top:10px;">Save Payment Settings</button>
         </form>
-    </main>
-</div>
 
 <style>
-.admin-container {
-    display: flex;
-    min-height: 100vh;
-}
-.admin-sidebar {
-    width: 250px;
-    background: #1a1a1a;
-    padding: 20px;
-    color: #fff;
-}
-.admin-sidebar h2 {
-    font-size: 20px;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #333;
-}
-.admin-sidebar nav a {
-    display: block;
-    padding: 12px 15px;
-    color: #aaa;
-    text-decoration: none;
-    border-radius: 4px;
-    margin-bottom: 5px;
-}
-.admin-sidebar nav a:hover,
-.admin-sidebar nav a.active {
-    background: #e63946;
-    color: #fff;
-}
-.admin-main {
-    flex: 1;
-    padding: 30px;
-    background: #f5f5f5;
-}
-.admin-header {
-    margin-bottom: 30px;
-}
-.admin-header h1 {
-    font-size: 28px;
-    margin-bottom: 5px;
-}
-.admin-header p {
-    color: #666;
-}
-.alert {
-    padding: 12px 16px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-}
-.alert-success {
-    background: #d4edda;
-    color: #155724;
-}
-.alert-error {
-    background: #f8d7da;
-    color: #721c24;
-}
 .settings-form {
     background: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border: 1px solid #e8ecf0;
+    border-radius: 12px;
+    padding: 28px;
     max-width: 800px;
+    margin-bottom: 24px;
 }
 .form-row {
     display: grid;
@@ -294,35 +228,28 @@ require_once INCLUDES_PATH . '/header.php';
 }
 .form-group label {
     display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #333;
+    margin-bottom: 7px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #888;
 }
 .form-group input,
 .form-group textarea {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 10px 14px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 7px;
     font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
 }
 .form-group input:focus,
 .form-group textarea:focus {
-    outline: none;
-    border-color: #e63946;
-}
-.btn-primary {
-    background: #e63946;
-    color: #fff;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-}
-.btn-primary:hover {
-    background: #d32f3f;
+    border-color: #008cb2;
+    box-shadow: 0 0 0 3px rgba(0,140,178,0.1);
 }
 
 /* ── Payment settings ── */
@@ -394,4 +321,4 @@ require_once INCLUDES_PATH . '/header.php';
 .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
 </style>
 
-<?php require_once INCLUDES_PATH . '/footer.php'; ?>
+<?php require_once INCLUDES_PATH . '/admin_footer.php'; ?>
