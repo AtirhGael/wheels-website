@@ -2,18 +2,23 @@
 
 # Enable Rewrite Engine
 <IfModule mod_rewrite.c>
+    Options +FollowSymLinks
     RewriteEngine On
-    RewriteBase /elitebbs/
-    
-    # Force HTTPS (uncomment for production)
-    # RewriteCond %{HTTPS} off
-    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-    
+    RewriteBase /
+
+    # Force HTTPS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Canonical: redirect non-www to www
+    RewriteCond %{HTTP_HOST} !^www\. [NC]
+    RewriteRule ^(.*)$ https://www.%{HTTP_HOST}/$1 [R=301,L]
+
     # Redirect .html to clean URL
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^(.+)\.html$ /$1 [R=301,L]
-    
+
     # Handle clean URLs for pages
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f

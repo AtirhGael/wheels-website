@@ -13,7 +13,7 @@ define('DB_PASS', '');  // Default XAMPP has no password - change for production
 
 // Site Configuration
 define('SITE_NAME', 'Elite BBS Rims');
-define('SITE_URL', 'http://localhost/elitebbs');
+define('SITE_URL', 'https://www.elitebbswheels.store');
 define('SITE_EMAIL', 'info@elitebbswheels.store');
 
 // Email Configuration (for order notifications)
@@ -27,9 +27,10 @@ define('CURRENCY_CODE', 'USD');
 // Timezone
 date_default_timezone_set('America/New_York');
 
-// Error Reporting (turn off in production)
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// Error Reporting
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(0);
 
 // Start session
 if (session_status() === PHP_SESSION_NONE) {

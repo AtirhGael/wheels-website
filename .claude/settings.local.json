@@ -39,7 +39,10 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost/elitebbs/product/bbs-rs-19x8-5-5x112-et38-diamond-silver\")",
       "Bash(curl -Ls -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost/elitebbs/product/106b-hexaform/\")",
       "Bash(curl -s \"http://localhost/elitebbs/product/106b-hexaform/\")",
-      "Bash(curl -s http://localhost/elitebbs/)"
+      "Bash(curl -s http://localhost/elitebbs/)",
+      "Bash(git -C /opt/lampp/htdocs/elitebbs show :new_product.sql)",
+      "Bash(git -C /opt/lampp/htdocs/elitebbs show HEAD:new_product.sql)",
+      "Read(//tmp/**)"
     ]
   }
 }

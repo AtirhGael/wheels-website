@@ -61,7 +61,7 @@ function get_all_brands() {
 
 // Format price
 function format_price($price) {
-    return CURRENCY_SYMBOL . number_format($price, 2);
+    return '$' . number_format($price, 2);
 }
 
 // Get sale price or regular price
@@ -255,7 +255,8 @@ function get_site_settings() {
 }
 
 function update_site_setting($key, $value) {
-    $sql = "UPDATE site_settings SET setting_value = :value WHERE setting_key = :key";
+    $sql = "INSERT INTO site_settings (setting_key, setting_value) VALUES (:key, :value)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)";
     return db_query($sql, [':key' => $key, ':value' => $value]);
 }
 

@@ -139,9 +139,15 @@ require_once INCLUDES_PATH . '/admin_header.php';
                         <label>Category</label>
                         <select name="category">
                             <option value="">Select category</option>
-                            <option value="Wheels" <?= ($edit_product['category'] ?? '') === 'Wheels' ? 'selected' : '' ?>>Wheels</option>
-                            <option value="Accessories" <?= ($edit_product['category'] ?? '') === 'Accessories' ? 'selected' : '' ?>>Accessories</option>
-                            <option value="Parts" <?= ($edit_product['category'] ?? '') === 'Parts' ? 'selected' : '' ?>>Parts</option>
+                            <option value="BBS" <?= ($edit_product['category'] ?? '') === 'BBS' ? 'selected' : '' ?>>BBS</option>
+                            <option value="Konig" <?= ($edit_product['category'] ?? '') === 'Konig' ? 'selected' : '' ?>>Konig</option>
+                            <option value="Work Wheels" <?= ($edit_product['category'] ?? '') === 'Work Wheels' ? 'selected' : '' ?>>Work Wheels</option>
+                            <option value="Volk Racing" <?= ($edit_product['category'] ?? '') === 'Volk Racing' ? 'selected' : '' ?>>Volk Racing</option>
+                            <option value="SSR" <?= ($edit_product['category'] ?? '') === 'SSR' ? 'selected' : '' ?>>SSR</option>
+                            <option value="Weds/Kranze" <?= ($edit_product['category'] ?? '') === 'Weds/Kranze' ? 'selected' : '' ?>>Weds/Kranze</option>
+                            <option value="Leon Hardiritt" <?= ($edit_product['category'] ?? '') === 'Leon Hardiritt' ? 'selected' : '' ?>>Leon Hardiritt</option>
+                            <option value="Blitz" <?= ($edit_product['category'] ?? '') === 'Blitz' ? 'selected' : '' ?>>Blitz</option>
+                            <option value="RiverSide" <?= ($edit_product['category'] ?? '') === 'RiverSide' ? 'selected' : '' ?>>RiverSide</option>
                         </select>
                     </div>
                     <div class="form-group">

@@ -11,32 +11,34 @@ $success = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $updates = [
-        'site_name'       => sanitize($_POST['site_name']       ?? ''),
-        'site_email'      => sanitize($_POST['site_email']       ?? ''),
-        'contact_phone'   => sanitize($_POST['contact_phone']    ?? ''),
-        'contact_address' => sanitize($_POST['contact_address']  ?? ''),
-        'business_hours'  => sanitize($_POST['business_hours']   ?? ''),
-        // Payment methods
-        'payment_bitcoin_enabled' => isset($_POST['payment_bitcoin_enabled']) ? '1' : '0',
-        'payment_bitcoin_wallet'  => sanitize($_POST['payment_bitcoin_wallet']  ?? ''),
-        'payment_bank_enabled'    => isset($_POST['payment_bank_enabled'])    ? '1' : '0',
-        'payment_bank_name'       => sanitize($_POST['payment_bank_name']       ?? ''),
-        'payment_bank_account'    => sanitize($_POST['payment_bank_account']    ?? ''),
-        'payment_bank_routing'    => sanitize($_POST['payment_bank_routing']    ?? ''),
-        'payment_bank_details'    => sanitize($_POST['payment_bank_details']    ?? ''),
-        'payment_paypal_enabled'  => isset($_POST['payment_paypal_enabled'])  ? '1' : '0',
-        'payment_paypal_email'    => sanitize($_POST['payment_paypal_email']    ?? ''),
-        'payment_paypal_link'     => sanitize($_POST['payment_paypal_link']     ?? ''),
-    ];
+
+    if (isset($_POST['submit_general'])) {
+        $updates = [
+            'site_name'       => sanitize($_POST['site_name']       ?? ''),
+            'site_email'      => sanitize($_POST['site_email']       ?? ''),
+            'contact_phone'   => sanitize($_POST['contact_phone']    ?? ''),
+            'contact_address' => sanitize($_POST['contact_address']  ?? ''),
+            'business_hours'  => sanitize($_POST['business_hours']   ?? ''),
+        ];
+    } else {
+        $updates = [
+            'payment_bitcoin_enabled' => isset($_POST['payment_bitcoin_enabled']) ? '1' : '0',
+            'payment_bitcoin_wallet'  => sanitize($_POST['payment_bitcoin_wallet']  ?? ''),
+            'payment_bank_enabled'    => isset($_POST['payment_bank_enabled'])    ? '1' : '0',
+            'payment_bank_name'       => sanitize($_POST['payment_bank_name']       ?? ''),
+            'payment_bank_account'    => sanitize($_POST['payment_bank_account']    ?? ''),
+            'payment_bank_routing'    => sanitize($_POST['payment_bank_routing']    ?? ''),
+            'payment_bank_details'    => sanitize($_POST['payment_bank_details']    ?? ''),
+            'payment_paypal_enabled'  => isset($_POST['payment_paypal_enabled'])  ? '1' : '0',
+            'payment_paypal_email'    => sanitize($_POST['payment_paypal_email']    ?? ''),
+            'payment_paypal_link'     => sanitize($_POST['payment_paypal_link']     ?? ''),
+        ];
+    }
 
     foreach ($updates as $key => $value) {
-        if (update_site_setting($key, $value)) {
-            $success = 'Settings saved successfully.';
-        } else {
-            $error = 'Failed to save settings.';
-        }
+        update_site_setting($key, $value);
     }
+    $success = 'Settings saved successfully.';
     $settings = get_site_settings();
 }
 
@@ -87,7 +89,7 @@ require_once INCLUDES_PATH . '/admin_header.php';
                 <textarea id="contact_address" name="contact_address" rows="3"><?= sanitize($settings['contact_address'] ?? '') ?></textarea>
             </div>
             
-            <button type="submit" class="adm-btn primary">Save Settings</button>
+            <button type="submit" name="submit_general" class="adm-btn primary">Save Settings</button>
         </form>
 
         <!-- ── Payment Methods ── -->
@@ -106,7 +108,7 @@ require_once INCLUDES_PATH . '/admin_header.php';
                     </div>
                     <label class="toggle-switch">
                         <input type="checkbox" name="payment_bitcoin_enabled" value="1"
-                            <?= $settings['payment_bitcoin_enabled'] ?? '0' ? 'checked' : ''; ?>>
+                            <?= ($settings['payment_bitcoin_enabled'] ?? '0') ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -129,7 +131,7 @@ require_once INCLUDES_PATH . '/admin_header.php';
                     </div>
                     <label class="toggle-switch">
                         <input type="checkbox" name="payment_bank_enabled" value="1"
-                            <?= $settings['payment_bank_enabled'] ?? '0' ? 'checked' : ''; ?>>
+                            <?= ($settings['payment_bank_enabled'] ?? '0') ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -174,7 +176,7 @@ require_once INCLUDES_PATH . '/admin_header.php';
                     </div>
                     <label class="toggle-switch">
                         <input type="checkbox" name="payment_paypal_enabled" value="1"
-                            <?= $settings['payment_paypal_enabled'] ?? '0' ? 'checked' : ''; ?>>
+                            <?= ($settings['payment_paypal_enabled'] ?? '0') ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -196,14 +198,7 @@ require_once INCLUDES_PATH . '/admin_header.php';
                 </div>
             </div>
 
-            <!-- hidden fields so general settings don't get overwritten -->
-            <input type="hidden" name="site_name"       value="<?= htmlspecialchars($settings['site_name']       ?? '') ?>">
-            <input type="hidden" name="site_email"      value="<?= htmlspecialchars($settings['site_email']      ?? '') ?>">
-            <input type="hidden" name="contact_phone"   value="<?= htmlspecialchars($settings['contact_phone']   ?? '') ?>">
-            <input type="hidden" name="contact_address" value="<?= htmlspecialchars($settings['contact_address'] ?? '') ?>">
-            <input type="hidden" name="business_hours"  value="<?= htmlspecialchars($settings['business_hours']  ?? '') ?>">
-
-            <button type="submit" class="adm-btn primary" style="margin-top:10px;">Save Payment Settings</button>
+            <button type="submit" name="submit_payment" class="adm-btn primary" style="margin-top:10px;">Save Payment Settings</button>
         </form>
 
 <style>

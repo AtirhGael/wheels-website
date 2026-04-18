@@ -221,7 +221,65 @@ function send_order_notification(
 </body>
 </html>';
 
-    return send_mail($admin_email, $subject, $html, $customer['customer_email'] ?? '');
+    // Notify admin
+    send_mail($admin_email, $subject, $html, $customer['customer_email'] ?? '');
+
+    // Send confirmation to customer
+    if (!empty($customer['customer_email']) && filter_var($customer['customer_email'], FILTER_VALIDATE_EMAIL)) {
+        $cust_subject = 'Order Confirmed — ' . $order_number . ' | ' . SITE_NAME;
+        $cust_html = '<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
+
+    <div style="background:linear-gradient(135deg,#0d0f13,#1a2030);padding:32px;text-align:center;">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:4px;color:rgba(255,255,255,0.4);text-transform:uppercase;">Elite BBS Rims</p>
+        <h1 style="margin:0;font-size:22px;font-weight:900;color:#fff;letter-spacing:1px;text-transform:uppercase;">Thank You For Your Order!</h1>
+        <p style="margin:10px 0 0;font-size:18px;font-weight:700;color:#00b4e0;">' . htmlspecialchars($order_number) . '</p>
+    </div>
+
+    <div style="padding:28px 32px;">
+        <p style="margin:0 0 20px;font-size:15px;color:#444;line-height:1.6;">Hi <strong>' . htmlspecialchars($customer['customer_name']) . '</strong>,<br>
+        We have received your order and will contact you within 24 hours with shipping costs and payment details.</p>
+
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eef0f3;border-radius:8px;overflow:hidden;margin-bottom:24px;">
+            <thead>
+                <tr style="background:#f8f9fb;">
+                    <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;border-bottom:1px solid #eef0f3;">Product</th>
+                    <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;border-bottom:1px solid #eef0f3;">Qty</th>
+                    <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#999;border-bottom:1px solid #eef0f3;">Total</th>
+                </tr>
+            </thead>
+            <tbody>' . $items_html . '</tbody>
+            <tfoot>
+                ' . $discount_html . '
+                <tr style="background:#f8f9fb;">
+                    <td colspan="2" style="padding:12px 16px;text-align:right;font-size:14px;font-weight:900;color:#1a1a1a;">Grand Total</td>
+                    <td style="padding:12px 16px;text-align:right;font-size:18px;font-weight:900;color:#008cb2;">$' . number_format($total, 2) . '</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <p style="margin:0 0 8px;font-size:13px;color:#888;">Payment Method: <strong style="color:#333;">' . $method_label . '</strong></p>
+        ' . ($btc_discount > 0 ? '<p style="margin:0 0 8px;font-size:13px;color:#f7931a;">Bitcoin discount applied: -$' . number_format($btc_discount, 2) . '</p>' : '') . '
+
+        <div style="margin-top:24px;padding:16px 20px;background:#f0f9fc;border-left:4px solid #008cb2;border-radius:4px;">
+            <p style="margin:0;font-size:13px;color:#555;">Questions? Reply to this email or contact us at <a href="mailto:' . SMTP_USER . '" style="color:#008cb2;">' . SMTP_USER . '</a></p>
+        </div>
+    </div>
+
+    <div style="background:#f8f9fb;border-top:1px solid #eef0f3;padding:16px 32px;text-align:center;">
+        <p style="margin:0;font-size:12px;color:#bbb;">' . SITE_NAME . ' &mdash; Order Confirmation</p>
+    </div>
+
+</div>
+</body>
+</html>';
+        send_mail($customer['customer_email'], $cust_subject, $cust_html);
+    }
+
+    return true;
 }
 
 
