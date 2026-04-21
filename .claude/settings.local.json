@@ -42,7 +42,9 @@
       "Bash(curl -s http://localhost/elitebbs/)",
       "Bash(git -C /opt/lampp/htdocs/elitebbs show :new_product.sql)",
       "Bash(git -C /opt/lampp/htdocs/elitebbs show HEAD:new_product.sql)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "WebSearch",
+      "Bash(/opt/lampp/bin/mysql -u root -e \"SELECT DISTINCT name FROM elitebbs.products ORDER BY name;\")"
     ]
   }
 }

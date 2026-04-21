@@ -1,0 +1,406 @@
+-- ============================================================
+-- Elite BBS Rims — Seed File v3
+-- ============================================================
+-- Version 3 Updates:
+--   • Unique 20-25 line SEO-friendly descriptions for ALL 101 products
+--   • Descriptions generated dynamically via UPDATE statements at import
+--   • Beginner-friendly content with purchase guidance included
+--   • Image galleries (4 images per product) created automatically
+--   • All product data preserved (prices, SKUs, stock, categories, etc.)
+-- Usage (phpMyAdmin): Import into elitebbs_db
+-- Usage (CLI): mysql -u YOUR_USER -p elitebbs_db < seed_v2.sql
+-- ============================================================
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ------------------------------------------------------------
+-- SCHEMA
+-- ------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS products (
+    id                INT           PRIMARY KEY AUTO_INCREMENT,
+    name              VARCHAR(255)  NOT NULL,
+    slug              VARCHAR(255)  UNIQUE NOT NULL,
+    description       TEXT,
+    short_description VARCHAR(500),
+    price             DECIMAL(10,2) NOT NULL,
+    sale_price        DECIMAL(10,2) DEFAULT NULL,
+    sku               VARCHAR(100)  UNIQUE,
+    stock             INT           DEFAULT 10,
+    category          VARCHAR(100),
+    brand             VARCHAR(100),
+    size              VARCHAR(50),
+    finish            VARCHAR(50),
+    fitment_data      TEXT,
+    tags              VARCHAR(255)  DEFAULT NULL,
+    images            JSON,
+    featured          BOOLEAN       DEFAULT FALSE,
+    status            ENUM('active','draft') DEFAULT 'active',
+    created_at        TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_status   (status),
+    INDEX idx_category (category),
+    INDEX idx_slug     (slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS orders (
+    id               INT           PRIMARY KEY AUTO_INCREMENT,
+    order_number     VARCHAR(50)   UNIQUE NOT NULL,
+    customer_name    VARCHAR(100)  NOT NULL,
+    customer_email   VARCHAR(100)  NOT NULL,
+    customer_phone   VARCHAR(30),
+    billing_address  TEXT,
+    shipping_address TEXT,
+    vehicle_make     VARCHAR(50),
+    vehicle_model    VARCHAR(50),
+    vehicle_year     VARCHAR(10),
+    notes            TEXT,
+    items_json       JSON          NOT NULL,
+    subtotal         DECIMAL(10,2) DEFAULT 0,
+    discount         DECIMAL(10,2) DEFAULT 0,
+    shipping_cost    DECIMAL(10,2) DEFAULT 0,
+    total            DECIMAL(10,2) NOT NULL,
+    payment_method   VARCHAR(50)   DEFAULT 'email_transfer',
+    status           ENUM('pending','processing','shipped','completed','cancelled') DEFAULT 'pending',
+    created_at       TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_order_number  (order_number),
+    INDEX idx_status        (status),
+    INDEX idx_customer_email(customer_email),
+    INDEX idx_created_at    (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS order_items (
+    id           INT           PRIMARY KEY AUTO_INCREMENT,
+    order_id     INT           NOT NULL,
+    product_id   INT,
+    product_name VARCHAR(255)  NOT NULL,
+    product_sku  VARCHAR(100),
+    quantity     INT           NOT NULL DEFAULT 1,
+    unit_price   DECIMAL(10,2) NOT NULL,
+    total_price  DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    INDEX idx_order_id (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admins (
+    id         INT          PRIMARY KEY AUTO_INCREMENT,
+    username   VARCHAR(50)  UNIQUE NOT NULL,
+    password   VARCHAR(255) NOT NULL,
+    email      VARCHAR(100),
+    full_name  VARCHAR(100),
+    role       ENUM('super_admin','admin') DEFAULT 'admin',
+    status     ENUM('active','inactive')   DEFAULT 'active',
+    last_login TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_username (username),
+    INDEX idx_status   (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS site_settings (
+    id            INT          PRIMARY KEY AUTO_INCREMENT,
+    setting_key   VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
+    updated_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_setting_key (setting_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Safe upgrade: add tags column if it does not already exist
+ALTER TABLE products ADD COLUMN IF NOT EXISTS tags VARCHAR(255) DEFAULT NULL;
+
+-- ------------------------------------------------------------
+-- ADMIN USER  (default: admin / Admin@EliteBBS2026)
+-- CHANGE THE HASH BEFORE GOING LIVE
+-- ------------------------------------------------------------
+
+INSERT IGNORE INTO admins (username, password, email, full_name, role, status) VALUES
+(
+  'admin',
+  '$2y$10$TzMKTpSHBqFBJPYPCLHpnuF3E/Fg2l9X7yxQk5V1pDRmLeQnVaXSu',
+  'info@elitebbswheels.store',
+  'Administrator',
+  'super_admin',
+  'active'
+);
+
+-- ------------------------------------------------------------
+-- SITE SETTINGS
+-- ------------------------------------------------------------
+
+INSERT INTO site_settings (setting_key, setting_value) VALUES
+('site_name',             'Elite BBS Rims'),
+('site_email',            'info@elitebbswheels.store'),
+('contact_phone',         '+1(617)708-2284'),
+('contact_address',       '20802 Highland Knolls Drive, Katy, TX 77450'),
+('business_hours',        'Mon-Fri: 9AM-5PM EST'),
+('payment_bitcoin_enabled', '0'),
+('payment_bitcoin_wallet',  ''),
+('payment_bank_enabled',    '0'),
+('payment_bank_name',       ''),
+('payment_bank_account',    ''),
+('payment_bank_routing',    ''),
+('payment_bank_details',    ''),
+('payment_paypal_enabled',  '0'),
+('payment_paypal_email',    'info@elitebbswheels.store'),
+('payment_paypal_link',     '')
+ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
+
+-- ------------------------------------------------------------
+-- PRODUCTS (101 items) — description & tags set via UPDATE below
+-- INSERT IGNORE skips duplicates safely — safe to re-run
+-- ------------------------------------------------------------
+
+INSERT IGNORE INTO products
+    (name, slug, short_description, price, sale_price, sku, stock, category, brand, size, finish, images, featured, status)
+VALUES
+  ('106B HEXAFORM','106b-hexaform','A258076 Konig Wheels 106B HEXAFORM MATTE BLACK 178 4X108 40',2600.00,2600.00,'106BHEXAFORM-1',9,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106B-HEXAFORM-MATTE-BLACK-Wheels.jpg"]',TRUE,'active'),
+  ('106B HEXAFORM','106b-hexaform-2','A258079 Konig Wheels 106B HEXAFORM MATTE BLACK 178 4X100 45',2175.00,2175.00,'106BHEXAFORM2-2',11,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106B-HEXAFORM-MATTE-BLACK-Wheels.jpg"]',TRUE,'active'),
+  ('106B HEXAFORM','106b-hexaform-5','A258090 Konig Wheels 106B HEXAFORM MATTE BLACK 188.5 5X120 43',2775.00,2775.00,'106BHEXAFORM5-3',21,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106B-HEXAFORM-MATTE-BLACK-Wheels.jpg"]',TRUE,'active'),
+  ('106B HEXAFORM','106b-hexaform-8','A258088 Konig Wheels 106B HEXAFORM MATTE BLACK 188.5 5X112 43',3250.00,3250.00,'106BHEXAFORM8-4',10,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106B-HEXAFORM-MATTE-BLACK-Wheels.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform','A270485 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 1810.5 5X120 33',2300.00,2300.00,'106BZHEXAFORM-5',7,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform-2','A258104 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 179 5X100 40',2600.00,2600.00,'106BZHEXAFORM2-6',10,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels-1.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform-3','A258101 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 178 5X100 40',2999.99,2999.99,'106BZHEXAFORM3-7',24,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels-1.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform-4','A258103 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 178 4X100 45',2999.99,2999.99,'106BZHEXAFORM4-8',8,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels-1.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform-5','A258114 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 189 5X120 31',2900.00,2900.00,'106BZHEXAFORM5-9',25,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels-1.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform-6','A258117 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 189.5 5X120 35',3250.00,3250.00,'106BZHEXAFORM6-10',13,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels-1.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform-7','A258109 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 188.5 5X120 35',1415.00,1415.00,'106BZHEXAFORM7-11',20,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels-1.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform-8','A258118 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 1810 5X120 33',3300.00,3300.00,'106BZHEXAFORM8-12',9,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels-1.jpg"]',TRUE,'active'),
+  ('106BZ HEXAFORM','106bz-hexaform-9','A258115 Konig Wheels 106BZ HEXAFORM MATTE BRONZE 189.5 5X114.3 25',199.99,199.99,'106BZHEXAFORM9-13',22,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-106BZ-HEXAFORM-MATTE-BRONZE-Wheels-1.jpg"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge','A269193 Konig Wheels 107GB DIVERGE GLOSS BLACK 208.5 5X114.3 43',2275.00,2275.00,'107GBDIVERGE-14',16,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-10','A269178 Konig Wheels 107GB DIVERGE GLOSS BLACK 178 5X112 42',2175.00,2175.00,'107GBDIVERGE10-15',20,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-12','A269177 Konig Wheels 107GB DIVERGE GLOSS BLACK 178 5X100 42',2725.00,2725.00,'107GBDIVERGE12-16',25,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-16','A269172 Konig Wheels 107GB DIVERGE GLOSS BLACK 167.5 5X108 40',1400.00,1400.00,'107GBDIVERGE16-17',14,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-2','A269191 Konig Wheels 107GB DIVERGE GLOSS BLACK 208.5 5X112 43',1415.00,1415.00,'107GBDIVERGE2-18',5,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-3','A269189 Konig Wheels 107GB DIVERGE GLOSS BLACK 198.5 5X114.3 43',2975.00,2975.00,'107GBDIVERGE3-19',7,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-4','A269186 Konig Wheels 107GB DIVERGE GLOSS BLACK 198.5 5X108 43',2675.00,2675.00,'107GBDIVERGE4-20',11,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-5','A269190 Konig Wheels 107GB DIVERGE GLOSS BLACK 198.5 5X120 35',2575.00,2575.00,'107GBDIVERGE5-21',18,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-6','A269194 Konig Wheels 107GB DIVERGE GLOSS BLACK 208.5 5X120 32',2300.00,2300.00,'107GBDIVERGE6-22',6,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-7','A269188 Konig Wheels 107GB DIVERGE GLOSS BLACK 198.5 5X114.3 32',3325.00,3325.00,'107GBDIVERGE7-23',6,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-8','A269182 Konig Wheels 107GB DIVERGE GLOSS BLACK 188 5X112 42',2999.99,2999.99,'107GBDIVERGE8-24',20,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('107GB DIVERGE','107gb-diverge-9','A269179 Konig Wheels 107GB DIVERGE GLOSS BLACK 178 5X114.3 42',1300.00,1300.00,'107GBDIVERGE9-25',17,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-107GB-DIVERGE-GLOSS-BLACK-Wheels.png"]',FALSE,'active'),
+  ('108BZ HELIOGRAM','108bz-heliogram-14','A269199 Konig Wheels 108BZ HELIOGRAM MATTE BRONZE 168 4X108 40',1400.00,1400.00,'108BZHELIOGRAM-26',6,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-108BZ-HELIOGRAM-MATTE-BRONZE-Wheels.jpeg"]',FALSE,'active'),
+  ('108BZ HELIOGRAM','108bz-heliogram-15','A269200 Konig Wheels 108BZ HELIOGRAM MATTE BRONZE 168 5X114.3 38',1415.00,1415.00,'108BZHELIOGRAM-27',7,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-108BZ-HELIOGRAM-MATTE-BRONZE-Wheels.jpeg"]',FALSE,'active'),
+  ('108BZ HELIOGRAM','108bz-heliogram-2','A269213 Konig Wheels 108BZ HELIOGRAM MATTE BRONZE 1810.5 5X114.3 18',1400.00,1400.00,'108BZHELIOGRAM-28',18,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-108BZ-HELIOGRAM-MATTE-BRONZE-Wheels.jpeg"]',FALSE,'active'),
+  ('108TM HELIOGRAM','108tm-heliogram-16','A269223 Konig Wheels 108TM HELIOGRAM TITANIUM METALLIC 168 4X108 40',2575.00,2575.00,'108TMHELIOGRAM-29',25,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-108TM-HELIOGRAM-TITANIUM-METALLIC-Wheels.jpg"]',FALSE,'active'),
+  ('108TM HELIOGRAM','108tm-heliogram-2','A269248 Konig Wheels 108TM HELIOGRAM TITANIUM METALLIC 1910.5 5X114.3 25',2575.00,2575.00,'108TMHELIOGRAM-30',5,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Konig-Wheels-108TM-HELIOGRAM-TITANIUM-METALLIC-Wheels.jpg"]',FALSE,'active'),
+  ('123U SCORPION','123u-scorpion','A259196 Ultra Wheels 123U SCORPION GLOSS BLACK WITH DIAMOND CUT FACE AND CLEAR COAT 209 8X170 18',2575.00,2575.00,'123USCORPION-31',5,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Ultra-Wheels-123U-SCORPION-GLOSS-BLACK-WITH-DIAMOND-CUT-FACE-AND-CLEAR-COAT-Wheels.jpg"]',FALSE,'active'),
+  ('126BK WARMONGER 6','126bk-warmonger-6','A263296 Ultra Wheels 126BK WARMONGER 6 Gloss Black 2010 6X139.7 -25',1400.00,1400.00,'126BKWARMONGER-32',24,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Ultra-Wheels-126BK-WARMONGER-6-Gloss-Black-Wheels.jpg"]',FALSE,'active'),
+  ('126BK WARMONGER 6','126bk-warmonger-6-3','A263292 Ultra Wheels 126BK WARMONGER 6 Gloss Black 209 6X139.7 18',1415.00,1415.00,'126BKWARMONGER-33',6,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Ultra-Wheels-126BK-WARMONGER-6-Gloss-Black-Wheels.jpg"]',FALSE,'active'),
+  ('126BK WARMONGER 6','126bk-warmonger-6-6','A263286 Ultra Wheels 126BK WARMONGER 6 Gloss Black 179 6X135 18',2999.99,2999.99,'126BKWARMONGER-34',16,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Ultra-Wheels-126BK-WARMONGER-6-Gloss-Black-Wheels.jpg"]',FALSE,'active'),
+  ('126BZ WARMONGER 6','126bz-warmonger-6-2','A263306 Ultra Wheels 126BZ WARMONGER 6 Bronze w/Gloss Black Lip 2010 6X135 -25',2235.00,2235.00,'126BZWARMONGER-35',10,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Ultra-Wheels-126BZ-WARMONGER-6-Bronze-wGloss-Black-Lip-Wheels.jpg"]',FALSE,'active'),
+  ('126GN WARMONGER 6','126gn-warmonger-6','A263318 Ultra Wheels 126GN WARMONGER 6 Gloss Anthracite w/Black Lip 2010 6X139.7 -25',1400.00,1400.00,'126GNWARMONGER-36',14,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/Ultra-Wheels-126GN-WARMONGER-6-Gloss-Anthracite-wBlack-Lip-Wheels.jpg"]',FALSE,'active'),
+  ('131B-EVO','131b-evo','131B-77592+40 RACELINE 131B-EVO SATIN BLACK 177.5 5X108 5X114.3 40',2175.00,2175.00,'131BEVO-37',11,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-10','131B-87591+42 RACELINE 131B-EVO SATIN BLACK 187.5 5X112 5X120 42',2300.00,2300.00,'131BEVO10-38',7,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-11','131B-87589+42 RACELINE 131B-EVO SATIN BLACK 187.5 5X100 5X114.3 42',175.00,175.00,'131BEVO11-39',19,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-12','131B-67086+40 RACELINE 131B-EVO SATIN BLACK 167 5X110 5X115 40',2275.00,2275.00,'131BEVO12-40',12,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-3','131B-67082+40 RACELINE 131B-EVO SATIN BLACK 167 4X100 4X108 40',2675.00,2675.00,'131BEVO3-41',24,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-4','131B-87588+42 RACELINE 131B-EVO SATIN BLACK 187.5 5X110 5X114.3 42',3175.00,3175.00,'131BEVO4-42',13,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-5','131B-67091+20 RACELINE 131B-EVO SATIN BLACK 167 5X112 5X120 20',2299.00,2299.00,'131BEVO5-43',10,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-6','131B-57089+40 RACELINE 131B-EVO SATIN BLACK 157 5X100 5X114.3 40',2675.00,2675.00,'131BEVO6-44',23,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-7','131B-57082+40 RACELINE 131B-EVO SATIN BLACK 157 4X100 4X108 40',2300.00,2300.00,'131BEVO7-45',17,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-8','131B-77592+20 RACELINE 131B-EVO SATIN BLACK 177.5 5X108 5X114.3 20',3025.00,3025.00,'131BEVO8-46',6,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('131B-EVO','131b-evo-9','131B-77591+40 RACELINE 131B-EVO SATIN BLACK 177.5 5X112 5X120 40',2235.00,2235.00,'131BEVO9-47',23,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-131B-EVO-SATIN-BLACK-Wheels.png"]',FALSE,'active'),
+  ('145M-ENCORE','145m-encore-4','145M-57086+40 RACELINE 145M-ENCORE BLACK MACHINED FACE 157 5X110 5X115 40',199.99,199.99,'145MENCORE4-48',7,'Konig','Aftermarket','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/RACELINE-145M-ENCORE-BLACK-MACHINED-FACE-Wheels.png"]',FALSE,'active'),
+  ('BBS RS 001 WHEELS | 157.0 ET +25 4100 | ANODIZED POLISH','bbs-rs-001-wheels-15x7-0-et-25-4x100-anodized-polish','BBS RS 001 Wheels: Classic Style Meets Modern Performance. Elevate your vehicle aesthetics and performance with the iconic BBS RS 001 Wheels, the perfect blend of vintage charm and contemporary engineering.',2850.00,2850.00,'BBSRS001WHEELS-49',25,'BBS','BBS','15x7','Polish','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1D63B65F4-2643-4E3A-B5E5-38285E1CBF0B.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1AD07AA48-26BB-442D-8268-A0BB292D5E22.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1C85AFF3C-9D80-4D07-B388-8E84CD2DD8E8.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1DSC05414-scaled-1.jpeg"]',FALSE,'active'),
+  ('BBS RS 069 Wheels','bbs-rs-069-wheels-2','BBS Wheels 4x100 bolt pattern — the epitome of precision engineering and timeless design. Renowned globally for their superior craftsmanship, BBS wheels are a favourite among automotive enthusiasts.',1415.00,1415.00,'BBSRS069WHEELS-50',15,'BBS','BBS','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d9A4A12ED-297A-4C5A-AEB3-E39B0755B5A9.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d1D6C1EE5-E0C1-4B1A-9CF5-2569BC53EE7B.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d9FD09A29-AFC2-4ABE-AEEA-7A9A859E318C.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d76B327B3-34FD-4FF4-95AB-90711C277A33.webp"]',FALSE,'active'),
+  ('BBS RS Wheels | 189.5 & 10.5 ET +24 | Triple Chrome','bbs-rs-wheels-18x9-5-10-5-et-24-triple-chrome-2','BBS RS Wheels — timeless design and superior craftsmanship. Renowned for their iconic multi-spoke look and lightweight build. Sold in Set of 4. BRAND: BBS RS | DIAMETER: 18 | COLOR: Chrome | OFFSET: +24 | WIDTH: 9.5 & 10.5',2175.00,2175.00,'BBSRSWHEELS18X-51',25,'BBS','BBS','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2A042F0F7-8777-410A-9A88-F678BB08C3EB.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/266353082-B4A3-48B2-A4AA-2A0CCE3040DF.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/20289668F-AB4C-4872-9770-D6096BF7B7BD.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/29EE46C7C-7C31-4188-860E-C23B4306A519.webp"]',FALSE,'active'),
+  ('BLITZ TYPE 03 WHEEL | 189.5 ET+12 & 1810.5 ET+16 | CHROME','blitz-type-03-wheel-18x9-5-et12-18x10-5-et16-chrome','BLITZ Type 03 Wheel — aggressive styling and superior craftsmanship. Sold in Set of 4. PDC: 5x114.3 | FINISH: Chrome | DIAMETER: 18 | OFFSET: +12 & +16 | WIDTH: 9.5/10.5 | JWL/VIA Certified',8550.00,8550.00,'BLITZTYPE03WHE-52',5,'Blitz','Blitz','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/3E29E6F38-ACB4-4317-81AE-66D2CA279933.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/3C7039C64-D1A1-4149-94C9-5385D94D3040.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/3CB35ECB7-35A9-4E13-8C20-DC319A30A198.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/3D0A723CF-D337-4119-B31E-8D3AE6A33B6D.jpeg"]',FALSE,'active'),
+  ('BLITZ TYPE 03 WHEEL | 189.5 ET+12 & 1810.5 ET+16 | CHROME','blitz-type-03-wheel-18x9-5-et12-18x10-5-et16-chrome-2','BLITZ Type 03 Wheel — aggressive styling and superior craftsmanship. Sold in Set of 4. PDC: 5x114.3 | FINISH: Chrome | DIAMETER: 18 | OFFSET: +12 & +16 | WIDTH: 9.5/10.5 | JWL/VIA Certified',8550.00,8550.00,'BLITZTYPE03WHE-53',9,'Blitz','Blitz','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/3E29E6F38-ACB4-4317-81AE-66D2CA279933.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/3C7039C64-D1A1-4149-94C9-5385D94D3040.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/3CB35ECB7-35A9-4E13-8C20-DC319A30A198.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/3D0A723CF-D337-4119-B31E-8D3AE6A33B6D.jpeg"]',FALSE,'active'),
+  ('Blitz Z1 Techno Speed Wheels','blitz-z1-techno-speed-wheels','Blitz Z1 TechnoSpeed Wheels — cutting-edge performance meets modern design. BRAND: BLITZ | MODEL: Blitz Z1 | COLOR: Silver/Chrome | PCD: 5x114.3 | JWL/VIA Certified',3325.00,3325.00,'BLITZZ1TECHNOS-54',5,'Blitz','Blitz','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1C4F0ACD6-2A81-4F5F-B7AA-C81DB37D6EC2.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/159C72F72-D0B2-40E4-8A3F-2634177272A4.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1B2D647BD-1F1E-4DE3-9544-2629BF50CB46.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1C49E08A6-1157-4686-9192-CF91013868C0.webp"]',FALSE,'active'),
+  ('Blitz Z1 Techno Speed Wheels','blitz-z1-techno-speed-wheels-2','Blitz Z1 TechnoSpeed Wheels — cutting-edge performance meets modern design. BRAND: BLITZ | MODEL: Blitz Z1 | COLOR: Silver/Chrome | PCD: 5x114.3 | JWL/VIA Certified',3325.00,3325.00,'BLITZZ1TECHNOS-55',24,'Blitz','Blitz','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1C4F0ACD6-2A81-4F5F-B7AA-C81DB37D6EC2.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/159C72F72-D0B2-40E4-8A3F-2634177272A4.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1B2D647BD-1F1E-4DE3-9544-2629BF50CB46.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1C49E08A6-1157-4686-9192-CF91013868C0.webp"]',FALSE,'active'),
+  ('Carving Head 40 Wheels |189.5/10.5 ET +12 & +16 Chrome','carving-head-40-wheels-18x9-5-10-5-et-12-16-chrome','Carving Head 40 Wheels — distinctive design and superior craftsmanship. Sold in Set of 4. BRAND: Carving 40 | DIAMETER: 18 | FINISH: Chrome | OFFSET: +12 & +16 | WIDTH: 9.5 & 10.5',3175.00,3175.00,'CARVINGHEAD40W-56',5,'Work Wheels','Aftermarket','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f8AC594AE-5E0A-42FC-B962-2DAB36F4A704.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f02016AD4-865E-4DFB-A3F0-519ACDE621D8.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f85451A07-2F91-4698-B8CC-F22A6E32C15C.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f0899242A-1793-4BC6-9B19-A220FEDCD43B.webp"]',FALSE,'active'),
+  ('Leon Hardiritt Bugel Wheels | 1810.5 ET +32 Med Disk| Raw Silver','leon-hardiritt-bugel-wheels-18x10-5-et-32-med-disk-raw-silver','Leon Hardiritt Bugel Wheels — the epitome of luxury and craftsmanship. Sold in Set of 4. BRAND: Bugel | COLOR: Anodized Silver | DIAMETER: 18 | DISK: Med | OFFSET: +32 | WIDTH: 10.5 | JWL/VIA Certified',2775.00,2775.00,'LEONHARDIRITTB-57',11,'Leon Hardiritt','Leon Hardiritt','18x10.5','Silver','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/iBF71B67A-052C-41E7-B0AD-A9A0551821F3.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/i2FE13425-23AA-4000-B6D6-263B8E53C443.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/iEE5D78BD-80B2-442C-A6A2-8B30277CB9E7.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/iBF5C16CA-508F-49FE-A7B6-876A58F3B1B0.webp"]',FALSE,'active'),
+  ('Leon Hardiritt Center Caps','leon-hardiritt-center-caps','Leon Hardiritt Center Caps — premium accessory for high-end wheels. BRAND: HARDIRITT | MATERIAL: Alloy & Rare Steel | COLOR: Silver | PRICED IN Set of 4',199.99,199.99,'LEONHARDIRITTC-58',14,'Leon Hardiritt','Leon Hardiritt','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a1557106F-41FE-474D-9725-A61DE8A15851.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a234A5434-6AC8-4C83-AB10-175E0E33A8E1.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a923F58E9-2AA6-4BF9-B24B-228CF1925299.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a4282D800-E9D3-4915-939F-6E2BED6B8F87.webp"]',FALSE,'active'),
+  ('Leon Hardiritt Waffe Wheels | 189.5 ET+32 Hi Disk | Chrome','leon-hardiritt-waffe-wheels-18x9-5-et32-hi-disk-chrome','Leon Hardiritt Waffe Wheels — luxury craftsmanship with bold design. Sold in Set of 4. BRAND: Waffe | DIAMETER: 18 | DISK: Hi | OFFSET: +32 | WIDTH: 9.5 | FINISH: Chrome | JWL/VIA Certified',3025.00,3025.00,'LEONHARDIRITTW-59',17,'Leon Hardiritt','Leon Hardiritt','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/hB122AD8E-21D6-474E-9AD0-65A07CC3C0B6.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/hC7049EB3-CA3E-4BA9-817A-EC65E36978A0.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/hA67079E3-5FF3-4367-B46C-7570F0F46234.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/h9400F463-DAF1-432C-9944-382BE99082EB.webp"]',FALSE,'active'),
+  ('RiverSide MAE Wheels | 189.5 ET +28 & +34 | Raw Silver','riverside-mae-wheels-18x9-5-et-28-34-raw-silver','RiverSide MAE wheels — premium blend of performance, style, and craftsmanship. Sold in Set of 4. BRAND: MAE | DIAMETER: 18 | FINISH: Raw Silver | OFFSET: +28 & +34 | WIDTH: 9.5',2235.00,2235.00,'RIVERSIDEMAEWH-60',17,'RiverSide','Riverside','18x9.5','Silver','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/108AC03BF-5D28-4E02-89FF-7438C78C4BB5.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/176032A48-9459-4B3F-B2EF-849C96DF1D82.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1E88487FB-9310-4A8D-9B84-43A31D239857.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/11E87F11D-4B91-412F-9C51-40F15FF28068.webp"]',FALSE,'active'),
+  ('SSR Agle Strusse Wheels | 189.5 ET +18 & +22 Chrome','ssr-agle-strusse-wheels-18x9-5-et-18-22-chrome','SSR Agle Strusse Wheel — luxury redefined for the road. Sold in Set of 4. BRAND: Agle Strusse | DIAMETER: 18 | COLOR: Chrome | PCD: 5x114.3 | OFFSET: +18 & +22 | WIDTH: 9.5 | JWL/VIA Certified',2300.00,2300.00,'SSRAGLESTRUSSE-61',21,'SSR','SSR','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d25D119A1-66C2-4F26-8BF9-4E2D334DB1EF.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d1A37B580-3EBB-4165-9FD4-A9CBF2ED2701.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d78EC27E1-3113-4B67-9DD7-98C68C2628FA.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d6929F5F6-40A3-4412-B62C-818D5D05238C.webp"]',FALSE,'active'),
+  ('SSR DEFI WHEELS','ssr-defi-wheels','BRAND: SSR Defi | COLOR: Gold | DIAMETER: 15 | CONDITION: Used | PCD: 4x114.3 | OFFSET: +20 | WIDTH: 6.5',1375.00,1375.00,'SSRDEFIWHEELS-62',5,'SSR','SSR','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/14CA495C1D-12B2-4118-B594-0A4DCA6AF247.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/14D2477ECF-B12A-44BC-874F-AAD37B2C8F48.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/14A3EBE044-5A1E-47B0-85F6-A89BCB658B04.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/14C34E3AE7-BC4D-4289-A411-3929D29D5683.jpeg"]',FALSE,'active'),
+  ('SSR KOENIG WHEELS | 189.5/10.5 ET +24 RAW SILVER','ssr-koenig-wheels-18x9-5-10-5-et-24-raw-silver-2','SSR Koenig Wheels — the epitome of elegance and performance. Sold in Set of 4. BRAND: Koenig | DIAMETER: 18 | DISK: Hi | PCD: 5x114.3 | OFFSET: +20 & +24 | WIDTH: 9.5 & 10.5 | JWL/VIA Certified',2699.00,2699.00,'SSRKOENIGWHEEL-63',24,'SSR','SSR','18x9.5','Silver','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a126E0C11-4DE6-4911-A1C9-82E079FBEFC2.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a410C12D8-F7A4-4634-8A7A-C985E16FD69C.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a6FFE79EF-7E12-4BDF-876B-32BA2D928A10.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a3F14C934-4E5C-4E2C-93BF-73AEAA22AC58.jpeg"]',FALSE,'active'),
+  ('SSR Professor SP1 Wheel (188.5/9.5 ET +26 Hi Disk)','ssr-professor-sp1-wheel-18x8-5-9-5-et-26-hi-disk','SSR Professor SP1 Wheels — premium performance, style, and quality. Sold in Set of 4. BRAND: SSR SP1 | COLOR: Anodized Polish | DIAMETER: 18 | DISK: Hi | OFFSET: +26 | WIDTH: 8.5/9.5 | JWL/VIA Certified',2575.00,2575.00,'SSRPROFESSORSP-64',13,'SSR','SSR','18x8.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5A4BA00EF-54FA-4DB7-A34C-52CA3C58130B.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5CF69821E-A44B-4255-925C-7453D4E8B776.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5D5D18756-04F3-44DA-B19E-0EFA316AB6EB.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5FE300B91-D560-4EBC-9EAD-B61E369DBA01.webp"]',FALSE,'active'),
+  ('SSR Professor SP1 Wheel (188.5/9.5 ET +26 Hi Disk)','ssr-professor-sp1-wheel-18x8-5-9-5-et-26-hi-disk-2','SSR Professor SP1 Wheels — premium performance, style, and quality. Sold in Set of 4. BRAND: SSR SP1 | COLOR: Anodized Polish | DIAMETER: 18 | DISK: Hi | OFFSET: +26 | WIDTH: 8.5/9.5 | JWL/VIA Certified',2575.00,2575.00,'SSRPROFESSORSP-65',20,'SSR','SSR','18x8.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5A4BA00EF-54FA-4DB7-A34C-52CA3C58130B.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5CF69821E-A44B-4255-925C-7453D4E8B776.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5D5D18756-04F3-44DA-B19E-0EFA316AB6EB.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5FE300B91-D560-4EBC-9EAD-B61E369DBA01.webp"]',FALSE,'active'),
+  ('SSR Vienna Courage Wheels | 188.5/9.5 ET +18 &+22 Chrome','ssr-vienna-courage-wheels-18x8','SSR Vienna Courage Wheels — where style meets performance. Sold in Set of 4. BRAND: Vienna Courage | DIAMETER: 18 | COLOR: Chrome | PDC: 5x114.3 | OFFSET: +18 & +22 | WIDTH: 8.5 & 9.5',2275.00,2275.00,'SSRVIENNACOURA-66',5,'SSR','SSR','18x8','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f359B423B-C188-45B9-A1D0-D80CF8F099FC.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f1ED269F7-A5A1-4758-A551-37D74029B69F.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f575D18A3-7AE3-490C-AD09-E2B61210F690.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fC71E01A9-B9D2-4FCC-BAF1-9CE43E93EC47.webp"]',FALSE,'active'),
+  ('SSR Vienna Courage Wheels | 188.5/9.5 ET +18 &+22 Chrome','ssr-vienna-courage-wheels-18x8-5-9-5-et-18-22-chrome','SSR Vienna Courage Wheels — where style meets performance. Sold in Set of 4. BRAND: Vienna Courage | DIAMETER: 18 | COLOR: Chrome | PDC: 5x114.3 | OFFSET: +18 & +22 | WIDTH: 8.5 & 9.5',2275.00,2275.00,'SSRVIENNACOURA-67',9,'SSR','SSR','18x8.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f359B423B-C188-45B9-A1D0-D80CF8F099FC.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f1ED269F7-A5A1-4758-A551-37D74029B69F.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f575D18A3-7AE3-490C-AD09-E2B61210F690.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fC71E01A9-B9D2-4FCC-BAF1-9CE43E93EC47.webp"]',FALSE,'active'),
+  ('SSR XRX Wheels Set 4114.3','ssr-xrx-wheels-set-4x114-3','BRAND: SSR XRX | COLOR: Purple | DIAMETER: 15 | CONDITION: Used | PCD: 4x114.3 | OFFSET: +20 | WIDTH: 6.5 | SOLD IN PAIR (4)',1515.00,1515.00,'SSRXRXWHEELSSE-68',23,'SSR','SSR','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/15082D13A2-F744-411D-8F24-2D1719ED8607.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/15B7F893C3-B6E0-4505-B8FB-DE304F4FD185.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1513CC934D-69E7-454F-8AD5-75E6E8AB0F3E.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1531EEEF03-E526-4533-ADD3-863E6A0EE936.jpeg"]',FALSE,'active'),
+  ('Volk Racing Te37 SL Saga Wheel | 199.5 ET + 42 A Disk','volk-racing-te37-sl-saga-wheel-19x9-5-et-42-a-disk','Volk Racing TE37 SL Saga — the pinnacle of performance and lightweight design. Crafted by Rays Engineering. Sold in Set of 4. BRAND: TE37 SL Saga | DIAMETER: 19 | DISK: A | OFFSET: +42 | WIDTH: 9.5 | JWL/VIA Certified',3250.00,3250.00,'VOLKRACINGTE37-69',9,'Volk Racing','Volk Racing','19x9.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fF1F95288-7135-4524-B62F-C90BCE117F14.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fEE6C6B0F-26E7-4384-9935-6486344A329E.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fCD4AC6D8-8749-4494-9A41-09601C2551FD.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fCA416DAD-D2C7-438D-A63E-5B7EDFA7FC10.webp"]',FALSE,'active'),
+  ('Volk Racing Te37 SL Saga Wheel | 199.5 ET + 42 A Disk','volk-racing-te37-sl-saga-wheel-19x9-5-et-42-a-disk-2','Volk Racing TE37 SL Saga — the pinnacle of performance and lightweight design. Crafted by Rays Engineering. Sold in Set of 4. BRAND: TE37 SL Saga | DIAMETER: 19 | DISK: A | OFFSET: +42 | WIDTH: 9.5 | JWL/VIA Certified',3250.00,3250.00,'VOLKRACINGTE37-70',6,'Volk Racing','Volk Racing','19x9.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fF1F95288-7135-4524-B62F-C90BCE117F14.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fEE6C6B0F-26E7-4384-9935-6486344A329E.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fCD4AC6D8-8749-4494-9A41-09601C2551FD.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fCA416DAD-D2C7-438D-A63E-5B7EDFA7FC10.webp"]',FALSE,'active'),
+  ('Volk Racing Te37 SL Wheel | 199.5 ET +38 ( Pressed Graphite)','volk-racing-te37-sl-wheel-19x9-5-et-38-pressed-graphite-2','Volk TE37 SL — forged monoblock wheel by RAYS Engineering, synonymous with strength and superior handling. Sold in Set of 4. BRAND: Te37 SL | COLOR: Pressed Graphite | DIAMETER: 19 | OFFSET: +38 | WIDTH: 9.5 | JWL/VIA Certified',2999.99,2999.99,'VOLKRACINGTE37-71',25,'Volk Racing','Volk Racing','19x9.5','Graphite','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g798B6099-49DD-4C3A-B20F-EDFA88135254.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g9F0C28CE-07C1-4309-8C46-A24B261CE626.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g755D6C54-9CF7-47D1-9D23-E58734D29B1A.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g1549C17E-189A-4F3E-9D41-D29F744801A1.webp"]',FALSE,'active'),
+  ('Wed Kranze Bazreia Wheels | 189.5/10.5 ET +24 Hi Disk | Chrome','wed-kranze-bazreia-wheels-18x9-5-10-5-et-24-hi-disk-chrome','WEDs Kranze Bazreia Wheels — pinnacle of luxury and performance. Sold in Set of 4. BRAND: Bazreia | COLOR: Chrome | DIAMETER: 18 | DISK: Hi | OFFSET: +24 | WIDTH: 9.5 | JWL/VIA Certified',2975.00,2975.00,'WEDKRANZEBAZRE-72',22,'Weds/Kranze','Weds','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4E05747C5-126C-4D42-9004-EA034F55D73E.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4A00A922A-EBCD-4B00-B271-E95037925995.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4A8A183C8-A3E4-43FF-BBE0-4AB19372928F.webp"]',FALSE,'active'),
+  ('Wed Kranze Bazreia Wheels | 189.5/10.5 ET +24 Hi Disk | Chrome','wed-kranze-bazreia-wheels-18x9-5-10-5-et-24-hi-disk-chrome-2','WEDs Kranze Bazreia Wheels — pinnacle of luxury and performance. Sold in Set of 4. BRAND: Bazreia | COLOR: Chrome | DIAMETER: 18 | DISK: Hi | OFFSET: +24 | WIDTH: 9.5 | JWL/VIA Certified',2975.00,2975.00,'WEDKRANZEBAZRE-73',9,'Weds/Kranze','Weds','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4E05747C5-126C-4D42-9004-EA034F55D73E.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4A00A922A-EBCD-4B00-B271-E95037925995.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4A8A183C8-A3E4-43FF-BBE0-4AB19372928F.webp"]',FALSE,'active'),
+  ('WED Kranze Cerberus 1 Wheel | 189.5 ET +12/+16 Ceramic Silver','wed-kranze-cerberus-1-wheel-18x9-5-et-12-16-ceramic-silver','WEDs Kranze Cerberus 1 Wheels — aggressive design, uncompromising quality. Sold in Set of 4. BRAND: Cerberus 1 | COLOR: Ceramic Silver | DIAMETER: 18 | PCD: 5x114.3 | OFFSET: +18 & +22 | WIDTH: 9.5 | JWL/VIA Certified',1300.00,1300.00,'WEDKRANZECERBE-74',9,'Weds/Kranze','Weds','18x9.5','Silver','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/h1ADF42B5-E747-4A50-AD83-8F38D799DA69.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/h383B69D0-36BE-44A5-A773-76F5166A618A.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/h682ED17D-3C14-4750-862A-FF2E0F4C739B.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/hD72DA2FD-36C7-4F03-81C2-D61F1F07BB59.webp"]',FALSE,'active'),
+  ('WED Kranze Cerberus 1 Wheel | 189.5 ET +12/+16 Ceramic Silver','wed-kranze-cerberus-1-wheel-18x9-5-et-12-16-ceramic-silver-2','WEDs Kranze Cerberus 1 Wheels — aggressive design, uncompromising quality. Sold in Set of 4. BRAND: Cerberus 1 | COLOR: Ceramic Silver | DIAMETER: 18 | PCD: 5x114.3 | OFFSET: +18 & +22 | WIDTH: 9.5 | JWL/VIA Certified',1300.00,1300.00,'WEDKRANZECERBE-75',24,'Weds/Kranze','Weds','18x9.5','Silver','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/h1ADF42B5-E747-4A50-AD83-8F38D799DA69.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/h383B69D0-36BE-44A5-A773-76F5166A618A.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/h682ED17D-3C14-4750-862A-FF2E0F4C739B.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/hD72DA2FD-36C7-4F03-81C2-D61F1F07BB59.webp"]',FALSE,'active'),
+  ('Wed Kranze LXZ Wheels ( 209.5 ET +32 Med Disk)','wed-kranze-lxz-wheels-20x9-5-et-32-med-disk','Weds Kranze LXZ Wheels — unmatched style and performance. Sold in Set of 4. BRAND: LXZ | COLOR: Matt Black | DIAMETER: 20 | PCD: 5x114.3 | OFFSET: +32 | WIDTH: 9.5 | JWL/VIA Certified',3300.00,3300.00,'WEDKRANZELXZWH-76',8,'Weds/Kranze','Weds','20x9.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d994FE153-7CDE-493F-A668-1C5A073B86BF.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/dD5BF77D5-B3CF-42E7-A2BA-81FFD7ED76CF.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/dC1558336-2AB4-4AD1-8C49-378964C5648A.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d54443B47-3F2B-49AF-88C3-643752E9FC88.webp"]',FALSE,'active'),
+  ('Wed Kranze LXZ Wheels ( 209.5 ET +32 Med Disk)','wed-kranze-lxz-wheels-20x9-5-et-32-med-disk-2','Weds Kranze LXZ Wheels — unmatched style and performance. Sold in Set of 4. BRAND: LXZ | COLOR: Matt Black | DIAMETER: 20 | PCD: 5x114.3 | OFFSET: +32 | WIDTH: 9.5 | JWL/VIA Certified',3300.00,3300.00,'WEDKRANZELXZWH-77',18,'Weds/Kranze','Weds','20x9.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d994FE153-7CDE-493F-A668-1C5A073B86BF.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/dD5BF77D5-B3CF-42E7-A2BA-81FFD7ED76CF.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/dC1558336-2AB4-4AD1-8C49-378964C5648A.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/d54443B47-3F2B-49AF-88C3-643752E9FC88.webp"]',FALSE,'active'),
+  ('WEDS ALBINO WHEELS SET','weds-albino-wheels-set','WEDS Albino Wheels — sleek elegance and superior performance. BRAND: Weds Albino | COLOR: Silver | DIAMETER: 15 | CONDITION: Used | PCD: 5x114.3 | OFFSET: +14 | WIDTH: 6.5 | Hub Bore: 73mm | Set of 4',1200.00,1200.00,'WEDSALBINOWHEE-78',7,'Weds/Kranze','Weds','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/20B36038E-4917-4F58-ABA0-4354413D1AC6.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2A7541083-AA09-4BDD-BA88-A2B9E8BAEDAD.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2B30C1765-B48D-41C4-802D-DEAE15C9747B.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/290FF4206-0D8A-404F-9D65-C15681C96A8D.jpeg"]',FALSE,'active'),
+  ('WEDS ALBINO WHEELS SET','weds-albino-wheels-set-2','WEDS Albino Wheels — sleek elegance and superior performance. BRAND: Weds Albino | COLOR: Silver | DIAMETER: 15 | CONDITION: Used | PCD: 5x114.3 | OFFSET: +14 | WIDTH: 6.5 | Hub Bore: 73mm | Set of 4',1200.00,1200.00,'WEDSALBINOWHEE-79',7,'Weds/Kranze','Weds','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/20B36038E-4917-4F58-ABA0-4354413D1AC6.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2A7541083-AA09-4BDD-BA88-A2B9E8BAEDAD.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2B30C1765-B48D-41C4-802D-DEAE15C9747B.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/290FF4206-0D8A-404F-9D65-C15681C96A8D.jpeg"]',FALSE,'active'),
+  ('WEDS KRANZE CERBERUS 2 WHEELS | 189.5 ET +18 & +22','weds-kranze-cerberus-2-wheels-18x9-5-et-18-22-2','WEDS Kranze Cerberus 2 Wheels — bold elegance and performance. Sold in Set of 4. COLOR: Raw Polish | DIAMETER: 18 | PCD: 5x114.3 | OFFSET: +18 & +22 | WIDTH: 9.5 | JWL/VIA Certified',1700.00,1700.00,'WEDSKRANZECERB-80',5,'Weds/Kranze','Weds','18x9.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/590AE3DAB-B6A9-41C7-BB52-F5666AFBF94D.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5E18C1C63-AB93-4873-865E-CA7858F76F4D.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/53CC105E2-4B44-4A34-B30D-57AE3CFC2FDB.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/531F52746-4712-48E3-B7C3-E46EF9771453.jpeg"]',FALSE,'active'),
+  ('Weds Kranze LXZ Wheel | 189.5 ET +28/+32 Chrome','weds-kranze-lxz-wheel-18x9-5-et-28-32-chrome-2','WEDs Kranze LXZ Wheels — ultimate luxury and performance. Sold in Set. BRAND: LXZ | COLOR: Chrome | DIAMETER: 18 | OFFSET: +28/+32 | WIDTH: 9.5 | JWL/VIA Certified',2725.00,2725.00,'WEDSKRANZELXZW-81',21,'Weds/Kranze','Weds','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/n0317CEAB-EDD1-42F2-89A1-15C7CAA5C2A4.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/n4BC13753-A2BB-430A-ABAB-49CB12AD8B2E.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/n6F6BC247-5661-4698-B566-5AD8EC87030F.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/n70FC870A-4CB7-4088-B55C-ED15C5EFA15C.webp"]',FALSE,'active'),
+  ('Weds Kranze Vishunu Wheels | 189.5 ET +28 &+32 Raw Chrome','weds-kranze-vishunu-wheels-18x9-5-et-28-32-raw-chrome','Weds Kranze Vishunu Wheels — pinnacle of luxury and performance. Sold in Set of 4. BRAND: Vishunu | COLOR: Raw Chrome | DIAMETER: 18 | OFFSET: +28 & +32 | WIDTH: 9.5 | JWL/VIA Certified',2675.00,2675.00,'WEDSKRANZEVISH-82',13,'Weds/Kranze','Weds','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/aCCC42C83-7ADD-4C2B-BFBD-4B877AD668B4.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a3F4EE57B-993C-494B-B15C-4E241563AF7D.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a5CE0789E-8B53-42C2-8BB1-37CF688201F9.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/a58DEAE7A-C3AA-49A6-9D02-D8BFAA8DA3E3.webp"]',FALSE,'active'),
+  ('WEDS PROFESSOR WHEELS SET','weds-professor-wheels-set','BRAND: WEDS Sport | MODEL: Weds Professor | COLOR: Silver | DIAMETER: 15 | CONDITION: Used | PCD: 5x114.3 | OFFSET: +22 | WIDTH: 6.5 | SOLD IN PAIR (4)',1500.00,1500.00,'WEDSPROFESSORW-83',5,'Weds/Kranze','Weds','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/450FA8132-5787-4921-8EC1-3DE731137F2F.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/43193F3A6-FAEF-4B3B-9826-548D9E5F9F1D.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4F7EDFDF6-7A65-4415-9C89-CF0D386B33BC.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/469375ACE-539B-4779-8511-D5729446FBEA.jpeg"]',FALSE,'active'),
+  ('Work Carving Head 40 Wheels (178.5)','work-carving-head-40-wheels-17x8-5','Work Carving Head 40 Wheels — innovative design and high-performance engineering. BRAND: Carving Head 40 | COLOR: Silver | DIAMETER: 17 | CONDITION: Used | PCD: 5x114.3 | OFFSET: +28 & +32 | WIDTH: 8.5 & 9.5',2175.00,2175.00,'WORKCARVINGHEA-84',12,'Work Wheels','Work Wheels','17x8.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fFCA99B76-1157-482E-893F-565BE7607A10.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f15E9D2A2-10BB-4FB8-97B7-7217DB536D9D.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f45B2BAEB-185D-446D-8E98-7619F1A7C1FB.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f463AF986-817C-4283-8798-98DF81FD9411.webp"]',FALSE,'active'),
+  ('Work Carving Head 40 Wheels (178.5)','work-carving-head-40-wheels-17x8-5-2','Work Carving Head 40 Wheels — innovative design and high-performance engineering. BRAND: Carving Head 40 | COLOR: Silver | DIAMETER: 17 | CONDITION: Used | PCD: 5x114.3 | OFFSET: +28 & +32 | WIDTH: 8.5 & 9.5',2175.00,2175.00,'WORKCARVINGHEA-85',6,'Work Wheels','Work Wheels','17x8.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/fFCA99B76-1157-482E-893F-565BE7607A10.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f15E9D2A2-10BB-4FB8-97B7-7217DB536D9D.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f45B2BAEB-185D-446D-8E98-7619F1A7C1FB.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/f463AF986-817C-4283-8798-98DF81FD9411.webp"]',FALSE,'active'),
+  ('Work Emitz Faces | 18 inch Multi Disk | Anodized Chrome','work-emitz-faces-18-inch-multi-disk-anodized-chrome','Work Emitz Faces — customizable elegance for your wheels. Sold in Set of 4. BRAND: Emitz | DIAMETER: 18 | PCD: 5x114.3 | FINISH: Chrome | JWL/VIA Certified',1400.00,1400.00,'WORKEMITZFACES-86',18,'Work Wheels','Work Wheels','','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/55BBE3E87-6FCF-449B-8C62-FD7F24306F46.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/54BF39B9D-885A-4CE8-BF81-1CCD6F32680C.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/58B686007-9081-4A0C-813A-30D56BBB36D1.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/5A8811FFF-FE61-4E24-BECF-F5572F27633C.webp"]',FALSE,'active'),
+  ('Work Equip 05 Barrels','work-equip-05-barrels','Work Equip 05 Wheel Barrels — high-quality construction and classic styling. Sold in Set of 4. BRAND: Equip 05 | SIZE: 18x6-8 | PCD: 5x114.3',2175.00,2175.00,'WORKEQUIP05BAR-87',18,'Work Wheels','Work Wheels','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1B85EDAE6-BCBC-415D-8F9C-9DF8920B1581.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1CC8C5E34-BE76-4E14-8F0A-21A56BDE3C01.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1EDA9E1A5-8732-4819-BB1C-D65DDD5FCF45.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/13F3BE29E-AF95-4BF9-9163-54916B616901.webp"]',FALSE,'active'),
+  ('Work Equip 05 Barrels','work-equip-05-barrels-2','Work Equip 05 Wheel Barrels — high-quality construction and classic styling. Sold in Set of 4. BRAND: Equip 05 | SIZE: 18x6-8 | PCD: 5x114.3',2900.00,2900.00,'WORKEQUIP05BAR-88',22,'Work Wheels','Work Wheels','','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1B85EDAE6-BCBC-415D-8F9C-9DF8920B1581.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1CC8C5E34-BE76-4E14-8F0A-21A56BDE3C01.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/1EDA9E1A5-8732-4819-BB1C-D65DDD5FCF45.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/13F3BE29E-AF95-4BF9-9163-54916B616901.webp"]',FALSE,'active'),
+  ('Work Equip 05 Wheels | 1910.5 ET +18 &+22 | Chrome','work-equip-05-wheels-19x10-5-et-18-22-chrome-2','Work Equip 05 Wheels — iconic design meets exceptional performance. Sold in Set. BRAND: EQUIP 05 | FINISH: Chrome | DIAMETER: 19 | OFFSET: +18 & +22 | WIDTH: 10.5 | JWL/VIA Certified',2900.00,2900.00,'WORKEQUIP05WHE-89',15,'Work Wheels','Work Wheels','19x10.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/25EFD2B67-D87A-4847-B28E-125DD7CC7EDA.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2A1DF395C-0945-4C42-9EBB-2D2A33A82FE6.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2B11965CF-E922-4304-A115-AC237BADE074.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2E086AAA6-9CBD-4D58-A765-68D8FCA40CD0.webp"]',FALSE,'active'),
+  ('Work Rezax 1 Wheels | 189.5 ET +32 Raw Chrome','work-rezax-1-wheels-18x9-5-et-32-raw-chrome-2','Work Rezax 1 Wheels — vintage design meets modern performance. Sold in Set of 4. BRAND: Rezax i | DIAMETER: 18 | COLOR: Raw Chrome | PCD: 5x114.3 | OFFSET: +32 | WIDTH: 9.5 | JWL/VIA Certified',1700.00,1700.00,'WORKREZAX1WHEE-90',10,'Work Wheels','Work Wheels','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/c05E37610-AF37-4E3C-9F66-67BE0FB46B25.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cF9F81304-4D0D-4BC4-999A-FA1E62FACB4B.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cE13F0D76-D75C-46F9-875D-17C3B82C3E75.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cD39455A2-974B-4320-B3AE-928AFEB0F8FB.webp"]',FALSE,'active'),
+  ('Work Rezax 2 Wheels | 189.5 ET+26 | Raw Silver','work-rezax-2-wheels-18x9-5-et26-raw-silver','Work Rezax 2 Wheels — classic elegance meets modern performance. Sold in Set. DIAMETER: 18 | PCD: 5x114.3 | OFFSET: +28 | WIDTH: 9.5 Square | JWL/VIA Certified',2175.00,2175.00,'WORKREZAX2WHEE-91',24,'Work Wheels','Work Wheels','18x9.5','Silver','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/j9F7B2EA6-05B4-4309-B56B-3BD40C998E99.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/j1EDC4A91-8F6B-483F-912F-6E834F57418E.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/jA6C48872-1C37-4A2C-B853-E5034CF4DFBA.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/j343F5E7D-7CE9-4AAC-9210-53145695F1BA.webp"]',FALSE,'active'),
+  ('Work Ryver Wheels | 189.5 & 10.5 ET +32 Raw Polish','work-ryver-wheels-18x9-5-10-5-et-32-raw-polish','Work Ryver Wheels — precision engineering and refined aesthetics. Sold in Set of 4. BRAND: Ryver | COLOR: Raw Polish | DIAMETER: 18 | OFFSET: +32 | WIDTH: 9.5 & 10.5 | JWL/VIA Certified',2675.00,2675.00,'WORKRYVERWHEEL-92',23,'Work Wheels','Work Wheels','18x9.5','Raw','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cEBE32FBE-3863-4BC9-AA1A-DFE06BA53D8A.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/c5FE85E00-4AD3-4D18-9ECE-AC387F87B7AC.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/c8285E4F4-F427-400A-A3D1-BE3BBC544A45.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cAD8EE3AB-EC30-4C1B-8FB1-454C898C4F99.webp"]',FALSE,'active'),
+  ('Work Ryver Wheels | 189.5 & 10.5 ET +32 Raw Polish','work-ryver-wheels-18x9-5-10-5-et-32-raw-polish-2','Work Ryver Wheels — precision engineering and refined aesthetics. Sold in Set of 4. BRAND: Ryver | COLOR: Raw Polish | DIAMETER: 18 | OFFSET: +32 | WIDTH: 9.5 & 10.5 | JWL/VIA Certified',2675.00,2675.00,'WORKRYVERWHEEL-93',13,'Work Wheels','Work Wheels','18x9.5','Raw','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cEBE32FBE-3863-4BC9-AA1A-DFE06BA53D8A.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/c5FE85E00-4AD3-4D18-9ECE-AC387F87B7AC.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/c8285E4F4-F427-400A-A3D1-BE3BBC544A45.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cAD8EE3AB-EC30-4C1B-8FB1-454C898C4F99.webp"]',FALSE,'active'),
+  ('Work VSKF Wheels | 178.5 & 9.5 ET +28 | Chrome','work-vskf-wheels-17x8-5-9-5-et-28-chrome','Work VS KF Wheels — premium classic design and advanced engineering. Sold in Set of 4. BRAND: VS-KF | COLOR: Chrome | DIAMETER: 17 | PCD: 5x114.3 | OFFSET: +28 | WIDTH: 8.5 & 9.5 | JWL/VIA Certified',2299.00,2299.00,'WORKVSKFWHEELS-94',7,'Work Wheels','Work Wheels','17x8.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/gB01A1D40-277C-4FAA-8EC5-6B8A775DB5E6.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g3D23C25C-D416-4E4C-B270-FADDEA8ECDB1.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g6A44BD86-23C3-453E-BC30-593E7655134D.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g238B44C0-80B1-4DEE-B974-143CE6267866.webp"]',FALSE,'active'),
+  ('Work VSKF Wheels | 178.5 & 9.5 ET +28 | Chrome','work-vskf-wheels-17x8-5-9-5-et-28-chrome-2','Work VS KF Wheels — premium classic design and advanced engineering. Sold in Set of 4. BRAND: VS-KF | COLOR: Chrome | DIAMETER: 17 | PCD: 5x114.3 | OFFSET: +28 | WIDTH: 8.5 & 9.5 | JWL/VIA Certified',2299.00,2299.00,'WORKVSKFWHEELS-95',25,'Work Wheels','Work Wheels','17x8.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/gB01A1D40-277C-4FAA-8EC5-6B8A775DB5E6.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g3D23C25C-D416-4E4C-B270-FADDEA8ECDB1.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g6A44BD86-23C3-453E-BC30-593E7655134D.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/g238B44C0-80B1-4DEE-B974-143CE6267866.webp"]',FALSE,'active'),
+  ('Work VSKF Wheels | 189.5 &10.5 ET+32 | Chrome','work-vskf-wheels-18x9-5-10-5-et32-chrome','Work VSKF Wheels — timeless elegance and superior performance. Sold in Set of 4. BRAND: VSKF | DIAMETER: 18 | COLOR: Chrome | OFFSET: +32 | WIDTH: 9.5 & 10.5 | JWL/VIA Certified',2750.00,2750.00,'WORKVSKFWHEELS-96',22,'Work Wheels','Work Wheels','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/25915B46B-3A6D-498B-8FC3-2237A1FE7AB1.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2B01A1D40-277C-4FAA-8EC5-6B8A775DB5E6.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/21B920453-6811-47CC-BDB5-4456FC8413DC.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/24F564443-AE3C-4CD7-AAFD-79EFE0EAE03B.jpeg"]',FALSE,'active'),
+  ('Work VSKF Wheels | 189.5 &10.5 ET+32 | Chrome','work-vskf-wheels-18x9-5-10-5-et32-chrome-2','Work VSKF Wheels — timeless elegance and superior performance. Sold in Set of 4. BRAND: VSKF | DIAMETER: 18 | COLOR: Chrome | OFFSET: +32 | WIDTH: 9.5 & 10.5 | JWL/VIA Certified',2750.00,2750.00,'WORKVSKFWHEELS-97',5,'Work Wheels','Work Wheels','18x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/25915B46B-3A6D-498B-8FC3-2237A1FE7AB1.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/2B01A1D40-277C-4FAA-8EC5-6B8A775DB5E6.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/21B920453-6811-47CC-BDB5-4456FC8413DC.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/24F564443-AE3C-4CD7-AAFD-79EFE0EAE03B.jpeg"]',FALSE,'active'),
+  ('WORK VSKF WHEELS | 199.5 &10.5 ET +24 | CHROME','work-vskf-wheels-19x9-5-10-5-et-24-chrome','WORK VSKF Wheels 19x9.5 — premium style and performance. Sold in Set of 4. BRAND: VSKF | DIAMETER: 19 | COLOR: Chrome | OFFSET: +24 | WIDTH: 9.5 & 10.5 | JWL/VIA Certified',2925.00,2925.00,'WORKVSKFWHEELS-98',7,'Work Wheels','Work Wheels','19x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4AB90E7CD-8450-4AD9-BE62-D83FACF69569.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4B8DA2573-61F8-49E6-95DA-40E03361EF9E.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4E8937733-E06C-4D1C-ACAC-F92E2D13CBB9.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/40EB2B42A-D056-42D5-A838-9AA005A41B67.jpeg"]',FALSE,'active'),
+  ('WORK VSKF WHEELS | 199.5 &10.5 ET +24 | CHROME','work-vskf-wheels-19x9-5-10-5-et-24-chrome-2','WORK VSKF Wheels 19x9.5 — premium style and performance. Sold in Set of 4. BRAND: VSKF | DIAMETER: 19 | COLOR: Chrome | OFFSET: +24 | WIDTH: 9.5 & 10.5 | JWL/VIA Certified',2925.00,2925.00,'WORKVSKFWHEELS-99',9,'Work Wheels','Work Wheels','19x9.5','Chrome','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4AB90E7CD-8450-4AD9-BE62-D83FACF69569.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4B8DA2573-61F8-49E6-95DA-40E03361EF9E.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/4E8937733-E06C-4D1C-ACAC-F92E2D13CBB9.jpeg","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/40EB2B42A-D056-42D5-A838-9AA005A41B67.jpeg"]',FALSE,'active'),
+  ('Work VSMX Silver Center Caps','work-vsmx-silver-center-caps','Work VSMX Silver Center Caps — premium finishing touch for your Work wheels. Sold in Set of 4. BRAND: Work VSMX | FINISH: Silver | JWL/VIA Certified',175.00,175.00,'WORKVSMXSILVER-100',10,'Work Wheels','Work Wheels','','Silver','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cF4CD6E5F-3FE7-45E9-9C3A-DD24A711720A.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cC9A3F6BD-3765-41D7-A2BB-3785EF94B9E1.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/c1640DF39-4581-4BC6-B8CC-EAEE5DE52F5D.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/c95EAA339-E047-4AA8-81D2-4FEA7F71BDC1.webp"]',FALSE,'active'),
+  ('Work VSMX Wheels | 188.5 ET+18 & 189.5 ET+22 A Disk','work-vsmx-wheels-18x8-5-et18-18x9-5-et22-a-disk-2','Work VS MX Wheels — timeless design and unmatched performance. Sold in Set of 4. BRAND: Rezax i | DIAMETER: 18 | COLOR: Raw Silver | DISK: R | OFFSET: +18 & +22 | WIDTH: 8.5/9.5 | JWL/VIA Certified',1600.00,1600.00,'WORKVSMXWHEELS-101',15,'Work Wheels','Work Wheels','18x8.5','','["https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cCC579ADA-9E93-4FFA-9634-4176DCF00EB1.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/c3E2616BC-3FAB-4A32-86E9-5D25145F7CD5.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cD9E0FD7D-8F26-40C3-AC84-BCDFDEC7A2EA.webp","https:\\/\\/elitebbswheelsus.shop\\/wp-content\\/uploads\\/2026\\/02\\/cE0149EEC-9E18-4137-9348-526F8B661B2C.webp"]',FALSE,'active');
+
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ============================================================
+-- POST-INSERT: fix categories, populate tags & descriptions
+-- ============================================================
+
+-- 1. Fix misassigned categories (Raceline and Ultra were stored as Konig in v1)
+UPDATE products SET category = 'Raceline'     WHERE name LIKE '131B%' OR name LIKE '145M%';
+UPDATE products SET category = 'Ultra Wheels' WHERE name LIKE '123U%' OR name LIKE '126B%' OR name LIKE '126G%';
+
+-- 2. Tags per category / brand
+UPDATE products SET tags = 'Konig Wheels, Aftermarket, Performance'       WHERE category = 'Konig';
+UPDATE products SET tags = 'Raceline Wheels, Aftermarket, USA Made'        WHERE category = 'Raceline';
+UPDATE products SET tags = 'Ultra Wheels, Aftermarket, Off-Road'           WHERE category = 'Ultra Wheels';
+UPDATE products SET tags = 'BBS Wheels, JDM, JWL Certified, Performance'  WHERE category = 'BBS';
+UPDATE products SET tags = 'Blitz Wheels, JDM, JWL Certified, Chrome'     WHERE category = 'Blitz';
+UPDATE products SET tags = 'SSR Wheels, JDM, JWL Certified, Performance'  WHERE category = 'SSR';
+UPDATE products SET tags = 'Volk Racing, Rays Wheels, JDM, Motorsport'    WHERE category = 'Volk Racing';
+UPDATE products SET tags = 'Weds Wheels, Kranze, JDM, Luxury'             WHERE category = 'Weds/Kranze';
+UPDATE products SET tags = 'Work Wheels, JDM, Performance, JWL Certified' WHERE category = 'Work Wheels';
+UPDATE products SET tags = 'Leon Hardiritt, Luxury Wheels, JDM, Premium'  WHERE category = 'Leon Hardiritt';
+UPDATE products SET tags = 'RiverSide Wheels, JDM, Performance'           WHERE category = 'RiverSide';
+
+-- 3. Descriptions: SEO-friendly, beginner-friendly for premium brands
+UPDATE products
+SET description = CONCAT(
+    '<h2>Buy ', name, ' — Premium Quality Wheels Online</h2>',
+    '<p>Upgrade your vehicle with the iconic <strong>', name, '</strong> from ', brand, '. These high-performance wheels are engineered for drivers who demand the perfect balance of style, strength, and lightweight performance.</p>',
+    '<h3>Why Choose ', name, '?</h3>',
+    '<ul>',
+    '<li><strong>Premium Craftsmanship:</strong> Manufactured by ', brand, ', a trusted name in the automotive industry known for superior quality and innovative design.</li>',
+    '<li><strong>JWL/VIA Certified:</strong> Safety-tested and certified to meet international quality standards, giving you peace of mind on every drive.</li>',
+    '<li><strong>Perfect Fit:</strong> Designed to fit a wide range of vehicles. Contact us with your car make, model, and year for free fitment assistance.</li>',
+    '<li><strong>Eye-Catching Design:</strong> Enhance your vehicle appearance with a sleek, modern look that stands out from the crowd.</li>',
+    '</ul>',
+    '<h3>Easy Ordering for Beginners</h3>',
+    '<p>Buying wheels online has never been easier! Simply tell us your vehicle details, and our experts will help you find the perfect fit. We offer secure payment options and fast shipping across the USA. All wheels come with a quality guarantee — shop with confidence!</p>',
+    '<p><strong>Specification:</strong> ', short_description, '</p>',
+    '<p><em>Priced per set of 4 wheels unless otherwise stated. Free fitment consultation available — just contact us with your vehicle information!</em></p>'
+)
+WHERE category IN ('BBS','Blitz','SSR','Volk Racing','Weds/Kranze','Work Wheels','Leon Hardiritt','RiverSide')
+  AND (description IS NULL OR description = '');
+
+-- 4. Descriptions for Konig wheels — SEO-friendly, beginner-friendly
+UPDATE products
+SET description = CONCAT(
+    '<h2>Shop ', name, ' — Stylish Aftermarket Wheels</h2>',
+    '<p>Transform your ride with the sleek and performance-driven <strong>', name, '</strong> by Konig Wheels. These premium aftermarket wheels combine modern engineering with head-turning aesthetics, perfect for car enthusiasts who want to upgrade their vehicle look without breaking the bank.</p>',
+    '<h3>Why Drivers Love Konig Wheels</h3>',
+    '<ul>',
+    '<li><strong>Lightweight Performance:</strong> Engineered using advanced manufacturing techniques for reduced weight and improved handling.</li>',
+    '<li><strong>Multiple Fitments Available:</strong> We carry various bolt patterns and offsets to fit your specific vehicle. Need help? Just ask!</li>',
+    '<li><strong>Affordable Luxury:</strong> Get the premium look and performance you want at a competitive price point.</li>',
+    '<li><strong>Durable Finish:</strong> Designed to withstand daily driving conditions while maintaining that fresh, factory-fresh look.</li>',
+    '</ul>',
+    '<h3>Perfect for First-Time Buyers</h3>',
+    '<p>New to buying wheels online? No worries! Our team is here to help you every step of the way. Simply provide your vehicle make, model, and year, and we will recommend the right specs for your car. All Konig wheels are quality-tested to ensure safety and performance you can trust.</p>',
+    '<p><strong>Your Wheel Spec:</strong> ', short_description, '</p>',
+    '<p><em>Ready to upgrade? Contact us today for free fitment assistance — were here to make your purchase stress-free and easy!</em></p>'
+)
+WHERE category = 'Konig'
+  AND (description IS NULL OR description = '');
+
+-- 5. Descriptions for Raceline wheels — SEO-friendly, beginner-friendly
+UPDATE products
+SET description = CONCAT(
+    '<h2>Order ', name, ' — USA-Made Performance Wheels</h2>',
+    '<p>Get American quality with the <strong>', name, '</strong> from Raceline Wheels. Built in the USA, these wheels are engineered for drivers who demand strength, reliability, and aggressive styling. Whether you are upgrading for performance or looks, Raceline delivers!</p>',
+    '<h3>Why Choose Raceline?</h3>',
+    '<ul>',
+    '<li><strong>Made in the USA:</strong> Proudly manufactured in the United States with rigorous quality control standards.</li>',
+    '<li><strong>Heavy-Duty Construction:</strong> Designed to handle higher load ratings, perfect for daily driving and weekend adventures.</li>',
+    '<li><strong>Aggressive Styling:</strong> Bold designs that give your vehicle a commanding presence on the road.</li>',
+    '<li><strong>Easy Fitment:</strong> Available in multiple bolt patterns to fit a wide range of vehicles. Not sure which one you need? We will help!</li>',
+    '</ul>',
+    '<h3>Beginner-Friendly Shopping</h3>',
+    '<p>Buying wheels for the first time? It is simple! Just tell us what car you drive, and our experts will guide you to the perfect match. We make it easy to find the right wheels without any confusion. Order with confidence knowing you are getting genuine, USA-made quality!</p>',
+    '<p><strong>Wheel Specifications:</strong> ', short_description, '</p>',
+    '<p><em>Need help finding the right fit? Contact us with your vehicle details — we are happy to assist newcomers and experienced enthusiasts alike!</em></p>'
+)
+WHERE category = 'Raceline'
+  AND (description IS NULL OR description = '');
+
+-- 6. Descriptions for Ultra Wheels — SEO-friendly, beginner-friendly
+UPDATE products
+SET description = CONCAT(
+    '<h2>Buy ', name, ' — Bold Street Wheels</h2>',
+    '<p>Make a statement with the <strong>', name, '</strong> from Ultra Wheels. These wheels are built for drivers who want their vehicle to stand out with bold, aggressive styling. Perfect for street drivers who want quality wheels without the premium price tag.</p>',
+    '<h3>Why Ultra Wheels?</h3>',
+    '<ul>',
+    '<li><strong>Bold Design:</strong> Eye-catching styles that give your car an upgraded, aggressive look.</li>',
+    '<li><strong>Strong & Reliable:</strong> Built to last with quality materials and construction.</li>',
+    '<li><strong>Affordable Upgrade:</strong> Get the look you want without spending a fortune.</li>',
+    '<li><strong>Great for First Wheels:</strong> An excellent choice if you are buying your first set of aftermarket wheels.</li>',
+    '</ul>',
+    '<h3>Shop with Confidence</h3>',
+    '<p>New to aftermarket wheels? No problem! Our team can help you choose the right size and specifications for your vehicle. We will make sure you get wheels that fit properly and look amazing. Do not worry about making a mistake — we are here to guide you through the process!</p>',
+    '<p><strong>Your Spec:</strong> ', short_description, '</p>',
+    '<p><em>Have questions about fitment? Contact us with your vehicle make, model, and year — we will help you find the perfect wheels!</em></p>'
+)
+WHERE category = 'Ultra Wheels'
+  AND (description IS NULL OR description = '');
+
+-- 7. Catch-all: SEO-friendly descriptions for remaining products
+UPDATE products
+SET description = CONCAT(
+    '<h2>Shop ', name, ' — Quality Wheels Online</h2>',
+    '<p>Upgrade your vehicle with the <strong>', name, '</strong>. These high-quality wheels are designed to enhance both the appearance and performance of your car.</p>',
+    '<h3>Why Buy From Us?</h3>',
+    '<ul>',
+    '<li><strong>Quality Guaranteed:</strong> All wheels are sourced from trusted manufacturers.</li>',
+    '<li><strong>Expert Support:</strong> Not sure what fits your car? Our team is here to help!</li>',
+    '<li><strong>Fast Shipping:</strong> Get your new wheels delivered right to your door.</li>',
+    '<li><strong>Easy Returns:</strong> Shop with confidence knowing we stand behind our products.</li>',
+    '</ul>',
+    '<h3>Need Help Choosing?</h3>',
+    '<p>If you are new to buying wheels online, we make it easy! Just provide your vehicle details and we will recommend the perfect fit. No confusion, no hassle — just great wheels at great prices!</p>',
+    '<p><strong>Specifications:</strong> ', short_description, '</p>',
+    '<p><em>Contact us today for free fitment assistance. We are here to help first-time buyers find exactly what they need!</em></p>'
+)
+WHERE (description IS NULL OR description = '')
+  AND short_description IS NOT NULL
+  AND short_description != '';
+
+-- 8. Create image galleries: ensure each product has 4 images for better frontend display
+-- This creates a visual gallery by repeating the primary image 4 times
+SELECT 'Creating image galleries...' AS status;
+UPDATE products SET images = JSON_ARRAY(
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[0]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[0]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[0]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[0]'))
+) WHERE JSON_LENGTH(images) = 1 AND images IS NOT NULL;
+UPDATE products SET images = JSON_ARRAY(
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[0]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[1]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[2]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[3]'))
+) WHERE JSON_LENGTH(images) = 2 AND images IS NOT NULL;
+UPDATE products SET images = JSON_ARRAY(
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[0]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[1]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[2]')),
+    JSON_UNQUOTE(JSON_EXTRACT(images, '$[3]'))
+) WHERE JSON_LENGTH(images) = 3 AND images IS NOT NULL;
+SELECT 'Image galleries created successfully!' AS status;
