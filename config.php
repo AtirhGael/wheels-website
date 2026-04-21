@@ -6,14 +6,16 @@
  */
 
 // Database Configuration
-define('DB_HOST', 'localhost');
+define('DB_HOST', '127.0.0.1');
+define('DB_SOCKET', '/opt/lampp/var/mysql/mysql.sock');
 define('DB_NAME', 'elitebbs_db');
 define('DB_USER', 'root');
 define('DB_PASS', '');  // Default XAMPP has no password - change for production
 
 // Site Configuration
 define('SITE_NAME', 'Elite BBS Rims');
-define('SITE_URL', 'https://www.elitebbswheels.store');
+define('SITE_URL', 'http://localhost/elitebbs');
+// define('SITE_URL', 'https://www.elitebbswheels.store');
 define('SITE_EMAIL', 'info@elitebbswheels.store');
 
 // Email Configuration (for order notifications)
